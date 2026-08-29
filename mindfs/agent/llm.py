@@ -1,5 +1,6 @@
-"""Local LLM inference runner and evidence-grounded answer synthesizer."""
+"""Local LLM inference runner supporting Apple Silicon MLX models, GGUF, and robust grounded synthesis."""
 
+import gc
 import os
 from pathlib import Path
 import re
@@ -10,7 +11,7 @@ from mindfs.retrieval.evidence import EvidenceItem, RetrievalResult
 
 
 class LLMEngine:
-    """Local LLM Engine supporting GGUF model execution and deterministic grounded synthesis."""
+    """Local LLM Engine supporting Apple Silicon MLX, GGUF models, and evidence synthesis."""
 
     def __init__(self, config: MindFSConfig):
         self.config = config
@@ -19,162 +20,314 @@ class LLMEngine:
         self.max_output_tokens = config.llm.max_output_tokens
         self.temperature = config.llm.temperature
         self._llm = None
+        self._mlx_model = None
         self._is_deterministic_fallback = True
+        self.active_model_name: Optional[str] = None
+        self.last_context_metrics: Optional[Any] = None
+        self.last_compression_event: Optional[Dict[str, Any]] = None
 
         self._init_backend()
 
+    @staticmethod
+    def _clean_model_name(p_str: str) -> str:
+        if "models--" in p_str:
+            return p_str.split("models--")[-1].split("/snapshots")[0].replace("--", "/")
+        p = Path(p_str)
+        return p.stem if p.is_file() else p.name
+
     def _init_backend(self) -> None:
-        if self.model_path and Path(self.model_path).exists():
+        """Initializes MLX or GGUF backend for the configured model_path."""
+        self._llm = None
+        self._mlx_model = None
+        self._mlx_tokenizer = None
+        self._is_deterministic_fallback = True
+
+        if not self.model_path:
+            return
+
+        p = Path(self.model_path).expanduser().resolve()
+        if not p.exists():
+            return
+
+        # 1. Try MLX / HuggingFace Backend (for directories or safetensors models)
+        if p.is_dir() or "safetensors" in p.name.lower():
+            try:
+                import mlx_lm
+                self._mlx_model, self._mlx_tokenizer = mlx_lm.load(str(p))
+                self._is_deterministic_fallback = False
+                self.active_model_name = self._clean_model_name(str(p))
+                return
+            except Exception:
+                pass
+
+        # 2. Try Llama.cpp for GGUF files
+        if p.is_file() and p.suffix.lower() in (".gguf", ".bin"):
             try:
                 from llama_cpp import Llama
                 self._llm = Llama(
-                    model_path=str(self.model_path),
+                    model_path=str(p),
                     n_ctx=self.context_tokens,
                     n_threads=os.cpu_count() or 4,
                     verbose=False,
                 )
                 self._is_deterministic_fallback = False
+                self.active_model_name = self._clean_model_name(str(p))
+                return
             except Exception:
-                self._is_deterministic_fallback = True
-        else:
-            self._is_deterministic_fallback = True
+                pass
+
+            try:
+                import mlx_lm
+                self._mlx_model, self._mlx_tokenizer = mlx_lm.load(str(p))
+                self._is_deterministic_fallback = False
+                self.active_model_name = self._clean_model_name(str(p))
+                return
+            except Exception:
+                pass
+
+        self._is_deterministic_fallback = True
+
+    def reason_and_simplify_query(self, user_query: str, history: Optional[List[Dict[str, Any]]] = None) -> str:
+        """
+        Dynamically analyzes, deconstructs, and simplifies the user's intent and context.
+        Uses active LLM if loaded, with intelligent fallback.
+        """
+        q_lower = user_query.lower().strip()
+        last_turn_text = ""
+        if history and len(history) > 0:
+            user_turns = [h for h in history[:-1] if h.get("role") == "user"]
+            if not user_turns and history:
+                user_turns = [h for h in history if h.get("role") == "user" and h.get("content").strip().lower() != q_lower]
+            if user_turns:
+                last_turn_text = user_turns[-1].get("content", "")
+
+        # If LLM is active, run prompt to deconstruct request
+        if not self._is_deterministic_fallback:
+            ctx_clause = f"Previous user context: \"{last_turn_text}\"\n" if last_turn_text else ""
+            prompt = (
+                f"<|im_start|>system\n"
+                f"You are the cognitive reasoning module of MindFS AI assistant. "
+                f"In 1 concise, clear sentence, analyze and simplify what the user is requesting. "
+                f"Resolve references like 'it', 'try again', or implied file operations.<|im_end|>\n"
+                f"<|im_start|>user\n"
+                f"{ctx_clause}"
+                f"User query: \"{user_query}\"\n"
+                f"Deconstruct request:<|im_end|>\n"
+                f"<|im_start|>assistant\n"
+            )
+            out = self.generate(prompt, max_tokens=70)
+            if out:
+                clean = out.replace("<|im_end|>", "").strip()
+                if len(clean) > 5 and not clean.startswith(("<|", "{")):
+                    return clean
+
+        # Context-aware deterministic breakdown fallback
+        if q_lower in ("try again", "retry", "repeat", "redo"):
+            if last_turn_text:
+                return f"Re-evaluating previous intent: '{last_turn_text}'. Re-running workspace discovery and execution plan."
+            return "Re-evaluating workspace state and re-running recent operation."
+
+        if any(w in q_lower for w in ("move", "mv", "relocate")):
+            return f"User requested relocating files in the workspace matching '{user_query}'. Identifying source files and target directory."
+
+        if any(w in q_lower for w in ("delete", "remove", "trash", "rm")):
+            return f"User requested deleting file entities from workspace. Formulating safety snapshot to trash before execution."
+
+        if any(w in q_lower for w in ("summarise", "summarize", "overview", "what is in this")):
+            return f"User requested a high-level architectural overview of workspace components and file inventory."
+
+        if any(w in q_lower for w in ("list", "count", "how many")):
+            return f"User requested inventory metadata and counts for workspace files."
+
+        return f"Analyzing query '{user_query}' to locate relevant files, semantic vector embeddings, and filesystem entities."
+
+    def generate(self, prompt: str, max_tokens: Optional[int] = None) -> str:
+        """Generates text from the active local model if loaded."""
+        tokens_limit = max_tokens or self.max_output_tokens
+        
+        # 1. MLX Backend
+        if not self._is_deterministic_fallback and self._mlx_model is not None:
+            try:
+                import mlx_lm
+                output = mlx_lm.generate(
+                    self._mlx_model,
+                    self._mlx_tokenizer,
+                    prompt=prompt,
+                    max_tokens=tokens_limit,
+                    verbose=False,
+                )
+                return output.strip()
+            except Exception:
+                pass
+
+        # 2. Llama.cpp Backend
+        if not self._is_deterministic_fallback and self._llm is not None:
+            try:
+                out = self._llm(
+                    prompt,
+                    max_tokens=tokens_limit,
+                    temperature=self.temperature,
+                )
+                return out["choices"][0]["text"].strip()
+            except Exception:
+                pass
+
+        return ""
 
     def _clean_doc_text(self, text: str) -> str:
-        """Removes comment markers and docstring wrappers."""
+        """Removes comment markers, docstrings, and artifacts."""
         cleaned = text.strip()
         cleaned = re.sub(r'^["\']{3}|["\']{3}$', '', cleaned).strip()
-        cleaned = re.sub(r'^(#|//|/\*|\*)\s*', '', cleaned, flags=re.MULTILINE).strip()
+        cleaned = re.sub(r'^(#+|//|/\*|\*)\s*', '', cleaned, flags=re.MULTILINE).strip()
         return cleaned
 
-    def _extract_file_semantic_summary(self, item: EvidenceItem, query: str) -> str:
-        """Extracts a clear, natural language explanation from an evidence item."""
+    def _extract_clean_summary_from_evidence(self, item: EvidenceItem) -> Optional[str]:
+        """Extracts a grammatically complete, meaningful summary statement from evidence."""
         fn = item.relative_path
         text = item.text.strip()
-        lines = [l.strip() for l in text.splitlines() if l.strip()]
+        if not text or text in (";", ":", "...", "{", "}"):
+            return None
 
-        # 1. Structured data (JSON, CSV, YAML, XML)
-        if any(fn.endswith(ext) for ext in (".json", ".csv", ".yaml", ".yml", ".xml")):
-            key_lines = [l for l in lines if ":" in l or "=" in l]
+        lines = [l.strip() for l in text.splitlines() if l.strip() and l.strip() not in (";", ":", "...", "{", "}")]
+
+        # 1. Structured data (JSON, YAML, CSV)
+        if any(fn.endswith(ext) for ext in (".json", ".csv", ".yaml", ".yml", ".toml")):
+            key_lines = [l for l in lines if (":" in l or "=" in l) and not l.startswith(("{", "}", "[", "]"))]
             if key_lines:
                 preview = ", ".join(key_lines[:3])
-                return f"In `{fn}`, the structured data specifies: {preview}."
-            return f"In `{fn}`, structured schema records are present for this topic."
+                return f"`{fn}`: contains configuration & structured records ({preview})"
+            return f"`{fn}`: structured configuration schema data"
 
-        # 2. Audio & Video
-        if any(fn.endswith(ext) for ext in (".mp4", ".mov", ".avi", ".mkv", ".mp3", ".wav", ".flac", ".ogg", ".m4a")):
-            props = []
+        # 2. Images & Screenshots
+        if any(fn.endswith(ext) for ext in (".png", ".jpg", ".jpeg", ".svg", ".webp")):
             for l in lines:
-                if any(k in l.lower() for k in ("duration", "codec", "resolution", "channels", "sample rate", "audio track")):
-                    props.append(l)
+                if "containing text:" in l:
+                    ocr_part = l.split("containing text:", 1)[1].strip()
+                    if ocr_part and len(ocr_part) > 3:
+                        return f"`{fn}`: screenshot containing visual text *\"{ocr_part[:120]}\"*"
+                if l.startswith("Image '") and "pixels" in l:
+                    return f"`{fn}`: UI graphic asset ({l})"
+            return f"`{fn}`: UI screenshot & image asset"
+
+        # 3. Audio & Video
+        if any(fn.endswith(ext) for ext in (".mp4", ".mov", ".avi", ".mkv", ".mp3", ".wav")):
+            props = [l for l in lines if any(k in l.lower() for k in ("duration", "resolution", "codec", "audio track"))]
             if props:
-                return f"`{fn}` ({'; '.join(props[:3])})."
-            return f"`{fn}` contains media recordings relevant to the query."
+                return f"`{fn}`: media recording ({', '.join(props[:2])})"
+            return f"`{fn}`: media recording"
 
-        clean_raw = text
-        if clean_raw.startswith("Summary: "):
-            clean_raw = clean_raw[9:].strip()
-
-        # 3. Code (Python, TypeScript, Go, Rust, C++, Java, etc.)
+        # 4. Source Code (Python, TypeScript, JS, etc.)
         if any(fn.endswith(ext) for ext in (".py", ".ts", ".js", ".go", ".rs", ".cpp", ".c", ".java")):
-            # Look for leading module/class docstring
+            # Look for docstring
+            clean_raw = text
             if clean_raw.startswith(('"""', "'''")):
                 doc_end = clean_raw.find('"""', 3) if clean_raw.startswith('"""') else clean_raw.find("'''", 3)
                 if doc_end != -1:
                     doc = self._clean_doc_text(clean_raw[3:doc_end])
-                    if doc:
-                        first_sentence = doc.split("\n")[0].strip()
+                    first_sentence = doc.split("\n")[0].strip()
+                    if first_sentence and len(first_sentence) > 5:
                         return f"`{fn}`: {first_sentence}"
-
-            # Check class or function definitions
-            defs = [l for l in lines if l.startswith(("class ", "def ", "function ", "pub fn ", "struct "))]
+            # Check function/class defs
+            defs = [l for l in lines if l.startswith(("class ", "def ", "export function ", "function ", "pub fn "))]
             if defs:
                 def_name = defs[0].split("(")[0].split(":")[0].strip()
-                return f"`{fn}` implements `{def_name}`."
+                return f"`{fn}`: implements `{def_name}`"
+            return f"`{fn}`: implementation module"
 
-            return f"`{fn}` contains implementation logic for this component."
-
-        # 4. Documents & PDFs (Markdown, Text, PDF)
-        filtered_lines = []
+        # 5. Documents & Specifications (Markdown, PDF, Text)
+        valid_sentences = []
         for l in lines:
-            if l.startswith("Summary: Page ") or l.startswith("Summary: "):
-                if ":" in l:
-                    after_colon = l.split(":", 1)[1].strip()
-                    if after_colon and not after_colon.startswith("[Image-only") and not after_colon.startswith("[empty page"):
-                        filtered_lines.append(after_colon)
-                continue
-            if "[Image-only" in l or "[empty page" in l or "[Binary or unparseable" in l:
-                continue
-            if len(l) > 10 and not l.startswith("```") and not l.startswith("<!--") and not l.startswith("#"):
-                filtered_lines.append(l)
+            if l.startswith("Summary:"):
+                l = l[8:].strip()
+            clean_l = re.sub(r'^[#\-\*\s>]+', '', l).strip()
+            # Ignore broken partial words or short noise
+            if len(clean_l) >= 15 and not clean_l.endswith((":", ";", ",")) and not clean_l.startswith(("n ", "g ", ";")):
+                valid_sentences.append(clean_l)
 
-        if filtered_lines:
-            summary_snippet = " ".join(filtered_lines[:3])
-            summary_snippet = self._clean_doc_text(summary_snippet)
-            if len(summary_snippet) > 280:
-                summary_snippet = summary_snippet[:280] + "..."
-            return f"`{fn}`: {summary_snippet}"
+        if valid_sentences:
+            chosen = valid_sentences[0]
+            if len(chosen) > 160:
+                chosen = chosen[:160] + "..."
+            return f"`{fn}`: {chosen}"
 
-        return f"`{fn}` provides documented evidence on this subject."
+        return f"`{fn}`: document containing workspace specifications"
 
-    def synthesize_answer(self, query: str, retrieval_result: RetrievalResult) -> str:
-        """
-        Synthesizes a direct natural language answer with concise sources and collapsible evidence.
-        """
+    def synthesize_answer(
+        self,
+        query: str,
+        retrieval_result: RetrievalResult,
+        history: Optional[List[Dict[str, Any]]] = None,
+    ) -> str:
+        """Synthesizes a direct, comprehensive natural language response with multi-turn memory."""
+        from mindfs.agent.memory import MemoryManager
+
         if not retrieval_result.has_sufficient_evidence or not retrieval_result.evidence:
             return (
                 f"MindFS could not find enough indexed evidence in your workspace for: **\"{query}\"**.\n\n"
-                f"**Possible reasons:**\n"
-                f"• The relevant files have not been indexed yet (try running `⚡ Index Selected Folder` or `Index Workspace`).\n"
-                f"• The files may be unsupported or exceeded size limits.\n"
-                f"• No matching content exists in the indexed files."
+                f"**Suggestions:**\n"
+                f"• Index additional folders or files from the Files tab.\n"
+                f"• Check that relevant files are supported and within size limits."
             )
 
         unique_files = list(dict.fromkeys(item.relative_path for item in retrieval_result.evidence))
         num_files = len(unique_files)
-        header = f"🧠 **MindFS found {num_files} relevant file{'s' if num_files != 1 else ''}**\n"
+        model_tag = f" ({self.active_model_name})" if (not self._is_deterministic_fallback and self.active_model_name) else ""
+        header = f"🧠 **MindFS found {num_files} relevant file{'s' if num_files != 1 else ''}**{model_tag}\n"
 
-        # 1. LLM Model synthesis if local GGUF loaded
         direct_answer = ""
-        if not self._is_deterministic_fallback and self._llm is not None:
-            context_blocks = []
-            for item in retrieval_result.evidence:
+
+        # 1. Real Local Model Generation with Multi-Turn Conversational Memory & Dynamic Compression
+        context_blocks = []
+        if retrieval_result and retrieval_result.evidence:
+            for item in retrieval_result.evidence[:5]:
                 prov = item.format_source_provenance()
-                context_blocks.append(f"Source: {prov}\nContent:\n{item.text}")
+                context_blocks.append(f"Source: {prov}\n{item.text[:600]}")
 
-            prompt = (
-                f"System: You are MindFS, a filesystem intelligence engine. "
-                f"Answer the user's question directly and concisely in natural language using ONLY the provided evidence. "
-                f"Synthesize across sources if multiple files contribute. Do not invent facts.\n\n"
-                f"Evidence:\n" + "\n---\n".join(context_blocks) + "\n\n"
-                f"Question: {query}\n"
-                f"Direct Answer:"
-            )
+        system_prompt = (
+            "<|im_start|>system\n"
+            "You are MindFS, an intelligent filesystem assistant with persistent memory across conversation turns. "
+            "Answer the user's question directly, clearly, and concisely in natural language using the provided evidence and conversation context. "
+            "Synthesize across files. Provide meaningful complete sentences. Do not invent facts.<|im_end|>"
+        )
 
-            try:
-                output = self._llm(
-                    prompt,
-                    max_tokens=self.max_output_tokens,
-                    temperature=self.temperature,
-                    stop=["\nSystem:", "\nQuestion:", "\nSources:"],
-                )
-                direct_answer = output["choices"][0]["text"].strip()
-            except Exception:
-                direct_answer = ""
+        prompt, metrics, comp_event = MemoryManager.build_compressed_context(
+            history=history or [],
+            evidence_blocks=context_blocks,
+            query=query,
+            system_prompt=system_prompt,
+            total_context_limit=self.context_tokens or 2048,
+            threshold_pct=getattr(self.config.llm, "compression_threshold_pct", 0.70),
+            tokenizer=self._mlx_tokenizer,
+            llm_engine=self,
+        )
+        self.last_context_metrics = metrics
+        self.last_compression_event = comp_event
 
-        # 2. Deterministic grounded synthesis fallback
+        if not self._is_deterministic_fallback:
+            gen = self.generate(prompt, max_tokens=self.max_output_tokens)
+            if gen:
+                clean_gen = gen.replace("<|im_end|>", "").replace("<|im_start|>", "").strip()
+                if clean_gen and len(clean_gen) > 10:
+                    direct_answer = clean_gen
+
+        # 2. Coherent Grounded Synthesis Fallback
         if not direct_answer:
             answer_points = []
+            seen_files = set()
             for item in retrieval_result.evidence:
-                summary_stmt = self._extract_file_semantic_summary(item, query)
-                if summary_stmt and summary_stmt not in answer_points:
+                if item.relative_path in seen_files:
+                    continue
+                summary_stmt = self._extract_clean_summary_from_evidence(item)
+                if summary_stmt:
+                    seen_files.add(item.relative_path)
                     answer_points.append(summary_stmt)
 
-            if len(answer_points) == 1:
-                direct_answer = answer_points[0]
-            else:
+            if answer_points:
                 direct_answer = "\n\n".join(f"• {pt}" for pt in answer_points)
+            else:
+                direct_answer = f"Found relevant files in workspace for '{query}'."
 
-        # 3. Build Sources List
+        # 3. Sources List
         sources_lines = ["\n**Sources**"]
         seen_provs = set()
         for item in retrieval_result.evidence:

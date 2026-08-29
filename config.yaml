@@ -3,5 +3,5 @@ index:
   faiss_path: .mindfs/index.faiss
   max_file_size_mb: 5.0
 resources:
-  max_rss_mb: 1740.0
+  max_rss_mb: 2048.0
 workspace_root: /Users/akshay/Desktop/code/MindFS

@@ -43,6 +43,13 @@ class Indexer:
         self.chunker = Chunker(config)
         self.resources = resource_manager or ResourceManager(config)
 
+        # Restore all previously indexed folders into sandbox allowed roots
+        try:
+            for f_info in self.store.list_indexed_folders():
+                self.sandbox.add_allowed_root(f_info["folder_path"])
+        except Exception:
+            pass
+
     def _should_skip_file(self, existing: Optional[FileInfo], current: FileInfo) -> bool:
         """Determines whether a file is completely unchanged and already indexed."""
         if not existing:
@@ -190,6 +197,15 @@ class Indexer:
 
         is_recursive = self.config.index.recursive_default if recursive is None else recursive
         target = target_path or ""
+        
+        # If absolute path is provided, automatically add to sandbox allowed roots
+        if target and Path(target).is_absolute():
+            target_resolved = Path(target).expanduser().resolve()
+            if target_resolved.is_dir():
+                self.sandbox.add_allowed_root(target_resolved)
+            elif target_resolved.parent.is_dir():
+                self.sandbox.add_allowed_root(target_resolved.parent)
+
         resolved = self.sandbox.validate_and_resolve(target, must_exist=True)
 
         with self.resources.track_operation(f"index_path:{self.sandbox.relative_path(resolved)}") as diag:
@@ -203,6 +219,7 @@ class Indexer:
 
             # Prune records for files that were deleted from disk under target directory
             if resolved.is_dir():
+                self.store.add_indexed_folder(str(resolved), resolved.name)
                 current_file_paths = {str(p) for p in files_to_process}
                 all_stored = self.store.list_all_files()
                 prefix = str(resolved)
@@ -240,6 +257,9 @@ class Indexer:
                         pass
 
             diag.files_processed = indexed
+
+            if resolved.is_dir():
+                self.store.update_indexed_folder(str(resolved), scanned)
 
             end_iso = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
             status_summary = self.store.get_status_summary()

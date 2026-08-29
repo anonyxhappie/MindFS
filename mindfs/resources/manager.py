@@ -58,6 +58,13 @@ class ResourceManager:
         current = self.get_current_rss_mb()
         return max(0.0, self.max_rss_mb - current)
 
+    def set_budget(self, max_rss_mb: float) -> float:
+        """Dynamically updates the memory budget ceiling in MB."""
+        self.max_rss_mb = float(max_rss_mb)
+        if self.config and hasattr(self.config, "resources"):
+            self.config.resources.max_rss_mb = float(max_rss_mb)
+        return self.max_rss_mb
+
     def is_safe_to_allocate(self, estimated_mb: float) -> bool:
         """Checks whether allocating estimated_mb would breach the budget."""
         current = self.get_current_rss_mb()

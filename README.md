@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="assets/logo_dark.jpg" alt="MindFS Logo" width="480"/>
+</p>
+
 # MindFS: Local Privacy-First Filesystem Intelligence Engine
 
 **MindFS** is a privacy-preserving, offline filesystem intelligence engine designed to operate within a strict **2 GB RAM budget** (target peak RSS < 1.7 GB). It indexes, semanticizes, and retrieves information from documents, structured data, media, archives, and binaries using sandboxed access, modular lazy-loaded processors, persistent SQLite + FAISS dual-storage, and evidence-grounded RAG answers.

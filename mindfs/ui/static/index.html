@@ -2,125 +2,268 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>MindFS — Local Filesystem Intelligence Engine</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>MindFS — Local Filesystem Intelligence &amp; Agent</title>
   <style>
     :root {
       --bg-primary: #0d1117;
       --bg-secondary: #161b22;
       --bg-tertiary: #21262d;
+      --bg-elevated: #282e38;
       --border-color: #30363d;
-      --text-primary: #f0f6fc;
+      --text-primary: #c9d1d9;
       --text-secondary: #8b949e;
       --accent: #58a6ff;
       --accent-hover: #79c0ff;
-      --accent-gradient: linear-gradient(135deg, #238636 0%, #2ea043 100%);
-      --danger: #f85149;
       --success: #3fb950;
       --warning: #d29922;
+      --danger: #f85149;
+      --purple: #bc8cff;
       --radius: 8px;
+      --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     }
 
     * { box-sizing: border-box; margin: 0; padding: 0; }
+    
     body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
       background-color: var(--bg-primary);
       color: var(--text-primary);
-      min-height: 100vh;
+      font-family: var(--font-family);
+      line-height: 1.5;
       display: flex;
       flex-direction: column;
+      min-height: 100vh;
+      width: 100%;
+      overflow-x: hidden;
     }
 
-    /* Top Navigation Bar */
+    /* Header */
     header {
-      background: var(--bg-secondary);
+      background-color: var(--bg-secondary);
       border-bottom: 1px solid var(--border-color);
-      padding: 12px 24px;
+      padding: 10px 16px;
       display: flex;
       justify-content: space-between;
       align-items: center;
-      position: sticky;
-      top: 0;
-      z-index: 100;
+      flex-wrap: wrap;
+      gap: 10px;
     }
 
-    .brand {
+    .brand-section {
       display: flex;
       align-items: center;
-      gap: 12px;
+      gap: 10px;
     }
 
-    .logo-icon {
-      width: 32px;
-      height: 32px;
-      background: linear-gradient(135deg, #1f6feb, #238636);
-      border-radius: 6px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-weight: bold;
+    .logo {
       font-size: 18px;
-    }
-
-    .brand-title {
-      font-size: 18px;
-      font-weight: 600;
+      font-weight: 700;
+      color: var(--accent);
       letter-spacing: -0.5px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
     }
 
     .workspace-badge {
       font-size: 12px;
-      background: var(--bg-tertiary);
-      border: 1px solid var(--border-color);
-      padding: 6px 14px;
-      border-radius: 20px;
       color: var(--text-secondary);
+      background: var(--bg-tertiary);
+      padding: 4px 10px;
+      border-radius: 6px;
+      border: 1px solid var(--border-color);
       cursor: pointer;
       display: flex;
       align-items: center;
-      gap: 8px;
+      gap: 6px;
       transition: all 0.2s;
+      max-width: min(180px, 38vw);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
     .workspace-badge:hover {
       border-color: var(--accent);
       color: var(--text-primary);
-      background: #1c2128;
+    }
+
+    .workspace-dropdown-container {
+      position: relative;
+      display: inline-block;
+      max-width: 100%;
+    }
+
+    /* ---- Dropdown: desktop ---- */
+    .workspace-dropdown-menu {
+      display: none;
+      position: absolute;
+      top: calc(100% + 6px);
+      left: 0;
+      min-width: 300px;
+      max-width: min(440px, calc(100vw - 24px));
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius);
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+      z-index: 2000;
+      overflow: hidden;
+      animation: fadeInDown 0.15s ease-out;
+    }
+    .workspace-dropdown-menu.active {
+      display: block;
+    }
+
+    /* ---- Dropdown: mobile — slide up from bottom as a sheet ---- */
+    @media (max-width: 600px) {
+      .workspace-dropdown-menu {
+        position: fixed;
+        top: auto;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        max-width: 100vw;
+        min-width: unset;
+        width: 100%;
+        border-radius: 16px 16px 0 0;
+        border-bottom: none;
+        box-shadow: 0 -8px 32px rgba(0, 0, 0, 0.6);
+        animation: slideUpSheet 0.2s ease-out;
+        max-height: 70vh;
+        overflow-y: auto;
+      }
+      @keyframes slideUpSheet {
+        from { transform: translateY(100%); opacity: 0; }
+        to   { transform: translateY(0);    opacity: 1; }
+      }
+      /* Drag handle visual cue */
+      .ws-dropdown-header::before {
+        content: '';
+        display: block;
+        width: 36px;
+        height: 4px;
+        background: var(--border-color);
+        border-radius: 2px;
+        margin: 0 auto 8px;
+      }
+      .ws-dropdown-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0;
+        padding-top: 14px;
+      }
+      .ws-item {
+        padding: 12px 16px;
+        min-height: 52px;
+      }
+      .ws-item-title { font-size: 14px; }
+      .ws-item-path  { font-size: 11px; white-space: normal; word-break: break-all; }
+    }
+
+    @keyframes fadeInDown {
+      from { opacity: 0; transform: translateY(-6px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .ws-dropdown-header {
+      padding: 8px 12px;
+      background: var(--bg-tertiary);
+      border-bottom: 1px solid var(--border-color);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .ws-dropdown-list {
+      max-height: 260px;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+    .ws-item {
+      padding: 10px 14px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+      cursor: pointer;
+      transition: background 0.15s ease;
+      font-size: 13px;
+    }
+    .ws-item:last-child {
+      border-bottom: none;
+    }
+    .ws-item:hover, .ws-item:active {
+      background: var(--bg-tertiary);
+    }
+    .ws-item.active {
+      background: rgba(88, 166, 255, 0.1);
+      border-left: 3px solid var(--accent);
+    }
+    .ws-item-title {
+      font-weight: 600;
+      color: var(--text-primary);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .ws-item-path {
+      font-size: 10px;
+      color: var(--text-secondary);
+      font-family: ui-monospace, monospace;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
 
     .header-stats {
       display: flex;
       align-items: center;
-      gap: 16px;
+      gap: 6px;
+      flex-wrap: wrap;
     }
 
     .pill {
-      font-size: 12px;
-      padding: 4px 10px;
+      font-size: 11px;
+      padding: 3px 8px;
       border-radius: 12px;
-      font-weight: 500;
+      font-weight: 600;
+      white-space: nowrap;
     }
     .pill-privacy { background: #23863622; color: #3fb950; border: 1px solid #238636; }
     .pill-memory { background: #1f6feb22; color: #58a6ff; border: 1px solid #1f6feb; }
+    .pill-purple { background: #8957e522; color: #bc8cff; border: 1px solid #8957e5; }
 
-    /* Tab Bar */
+    /* Responsive Navigation Tabs */
     nav.tabs {
       background: var(--bg-secondary);
       border-bottom: 1px solid var(--border-color);
-      padding: 0 24px;
+      padding: 0 12px;
       display: flex;
-      gap: 8px;
+      gap: 4px;
+      overflow-x: auto;
+      white-space: nowrap;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: none;
     }
+    nav.tabs::-webkit-scrollbar { display: none; }
 
     .tab-btn {
       background: none;
       border: none;
       color: var(--text-secondary);
-      font-size: 14px;
+      font-size: 13px;
       font-weight: 500;
-      padding: 12px 16px;
+      padding: 10px 12px;
       cursor: pointer;
       border-bottom: 2px solid transparent;
       transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      min-height: 44px;
     }
     .tab-btn:hover { color: var(--text-primary); }
     .tab-btn.active {
@@ -128,11 +271,71 @@
       border-bottom-color: var(--accent);
     }
 
+    /* ---- Mobile overrides (≤600px) ---- */
+    @media (max-width: 600px) {
+      /* Header: single row, no wrap */
+      header {
+        flex-wrap: nowrap;
+        padding: 8px 12px;
+        gap: 6px;
+        align-items: center;
+      }
+      .brand-section {
+        flex: 1;
+        min-width: 0;
+        gap: 6px;
+        overflow: hidden;
+      }
+      /* Header stats: hidden on mobile — info visible in dashboard cards */
+      .header-stats { display: none; }
+
+      /* Workspace badge tighter */
+      .workspace-badge {
+        max-width: min(160px, 35vw);
+        font-size: 11px;
+      }
+
+      /* Tabs: equal-width, icon+short label, no scroll */
+      nav.tabs {
+        padding: 0;
+        gap: 0;
+        justify-content: stretch;
+      }
+      .tab-btn {
+        flex: 1;
+        flex-direction: column;
+        gap: 2px;
+        padding: 6px 2px;
+        font-size: 9px;
+        min-height: 52px;
+        justify-content: center;
+        align-items: center;
+        white-space: nowrap;
+        overflow: hidden;
+      }
+      .tab-btn .tab-icon { font-size: 18px; }
+      .tab-btn .tab-label { font-size: 9px; letter-spacing: 0; }
+
+      /* Main padding */
+      main { padding: 10px; }
+
+      /* Folder card: stack into two rows on mobile */
+      .folder-card-row {
+        flex-direction: column !important;
+        align-items: flex-start !important;
+        gap: 8px !important;
+      }
+      .folder-card-actions {
+        width: 100%;
+        justify-content: flex-end !important;
+      }
+    }
+
     /* Main Container */
     main {
       flex: 1;
-      padding: 24px;
-      max-width: 1300px;
+      padding: 14px;
+      max-width: 1280px;
       width: 100%;
       margin: 0 auto;
     }
@@ -140,165 +343,110 @@
     .tab-pane { display: none; }
     .tab-pane.active { display: block; }
 
-    /* Dashboard Metrics Cards */
+    /* Metrics Grid */
     .metrics-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-      gap: 16px;
-      margin-bottom: 24px;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 10px;
+      margin-bottom: 14px;
     }
 
     .card {
       background: var(--bg-secondary);
       border: 1px solid var(--border-color);
       border-radius: var(--radius);
-      padding: 18px;
-      margin-bottom: 16px;
+      padding: 14px;
+      margin-bottom: 12px;
     }
 
     .card-title {
-      font-size: 13px;
+      font-size: 11px;
       color: var(--text-secondary);
-      margin-bottom: 8px;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
       font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.7px;
     }
 
     .card-value {
       font-size: 28px;
       font-weight: 700;
-      color: var(--text-primary);
+      color: var(--accent);
+      margin-top: 6px;
+      line-height: 1.1;
     }
 
+    /* Override: RSS card value in warning color when high */
+    #metricPeakRss { color: var(--accent); }
+
     .card-subtext {
-      font-size: 12px;
+      font-size: 11px;
       color: var(--text-secondary);
       margin-top: 4px;
     }
 
-    /* Action Buttons & Forms */
-    .btn-row {
-      display: flex;
-      flex-wrap: wrap;
-      align-items: center;
-      gap: 12px;
-      margin-bottom: 20px;
-    }
+    /* Metric cards: accent left-border per category */
+    .card.card-files   { border-left: 3px solid var(--accent); }
+    .card.card-ai      { border-left: 3px solid var(--purple); }
+    .card.card-vectors { border-left: 3px solid #3fb950; }
+    .card.card-rss     { border-left: 3px solid var(--warning); }
+    .card.card-rss #metricPeakRss { color: var(--warning); }
 
+    /* Buttons & Inputs */
     .btn {
-      background: var(--bg-tertiary);
-      border: 1px solid var(--border-color);
+      background-color: var(--bg-tertiary);
       color: var(--text-primary);
-      padding: 8px 16px;
+      border: 1px solid var(--border-color);
+      padding: 8px 14px;
       border-radius: var(--radius);
       font-size: 13px;
-      font-weight: 600;
+      font-weight: 500;
       cursor: pointer;
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
       transition: all 0.2s;
-    }
-    .btn:hover { background: #30363d; border-color: #8b949e; }
-    .btn-primary { background: #238636; border-color: #2ea043; }
-    .btn-primary:hover { background: #2ea043; }
-    .btn-accent { background: #1f6feb; border-color: #388bfd; }
-    .btn-accent:hover { background: #388bfd; }
-    .btn-danger { background: #da3633; border-color: #f85149; }
-    .btn-danger:hover { background: #f85149; }
-
-    .checkbox-label {
       display: inline-flex;
       align-items: center;
+      justify-content: center;
       gap: 6px;
-      font-size: 13px;
-      color: var(--text-secondary);
-      cursor: pointer;
-      user-select: none;
+      min-height: 38px;
+      touch-action: manipulation;
     }
-    .checkbox-label input[type="checkbox"] {
-      accent-color: #238636;
-      width: 16px;
-      height: 16px;
-      cursor: pointer;
+    .btn:hover {
+      background-color: #30363d;
+      border-color: #8b949e;
+    }
+    .btn-primary { background-color: #238636; border-color: #2ea043; color: #fff; }
+    .btn-primary:hover { background-color: #2ea043; }
+    .btn-danger { background-color: #da3633; border-color: #f85149; color: #fff; }
+    .btn-danger:hover { background-color: #b62324; }
+    .btn-accent { background-color: #1f6feb; border-color: #388bfd; color: #fff; }
+    .btn-accent:hover { background-color: #388bfd; }
+
+    .btn-row {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 12px;
+      flex-wrap: wrap;
+      align-items: center;
     }
 
-    /* Selected Folder Tag */
-    .folder-tag {
-      background: var(--bg-tertiary);
+    .input-field, .select-field {
+      background: var(--bg-primary);
       border: 1px solid var(--border-color);
+      color: var(--text-primary);
       padding: 8px 12px;
       border-radius: var(--radius);
       font-size: 13px;
-      color: var(--accent);
-      font-weight: 500;
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      max-width: 450px;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
+      outline: none;
+      min-height: 38px;
     }
+    .input-field:focus, .select-field:focus { border-color: var(--accent); }
 
-    /* Breadcrumbs */
-    .breadcrumb-bar {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      font-size: 13px;
-      background: var(--bg-tertiary);
-      padding: 8px 14px;
-      border-radius: var(--radius);
-      margin-bottom: 16px;
-      border: 1px solid var(--border-color);
-      flex-wrap: wrap;
-    }
-    .crumb-link {
-      color: var(--accent);
-      cursor: pointer;
-      text-decoration: none;
-    }
-    .crumb-link:hover { text-decoration: underline; }
-    .crumb-sep { color: var(--text-secondary); }
-
-    /* Explorer Table */
-    .explorer-table {
-      width: 100%;
-      border-collapse: collapse;
-      font-size: 13px;
-    }
-
-    .explorer-table th {
-      text-align: left;
-      padding: 10px 14px;
-      background: var(--bg-tertiary);
-      color: var(--text-secondary);
-      border-bottom: 1px solid var(--border-color);
-    }
-
-    .explorer-table td {
-      padding: 12px 14px;
-      border-bottom: 1px solid var(--border-color);
-    }
-
-    .explorer-table tr:hover td {
-      background: #1c2128;
-    }
-
-    .row-folder {
-      cursor: pointer;
-      color: var(--accent);
-      font-weight: 600;
-    }
-
+    /* Category Badges */
     .cat-badge {
-      display: inline-block;
-      padding: 2px 8px;
-      border-radius: 10px;
-      font-size: 11px;
-      font-weight: 600;
+      font-size: 10px;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
     }
     .cat-DIR { background: #1f6feb33; color: #58a6ff; }
     .cat-DOCUMENT { background: #1f6feb33; color: #58a6ff; }
@@ -308,31 +456,46 @@
     .cat-VIDEO { background: #db61a233; color: #f778ba; }
     .cat-ARCHIVE { background: #f0883e33; color: #f0883e; }
     .cat-BINARY { background: #f8514933; color: #f85149; }
-    /* Progress Bar */
+
+    /* Compatibility Badges */
+    .compat-badge {
+      font-size: 11px;
+      font-weight: 700;
+      padding: 3px 8px;
+      border-radius: 12px;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .compat-compatible { background: #23863622; color: #3fb950; border: 1px solid #238636; }
+    .compat-warning { background: #d2992222; color: #d29922; border: 1px solid #d29922; }
+    .compat-exceeds_budget { background: #f8514922; color: #f85149; border: 1px solid #f85149; }
+
+    /* Progress Card */
     .progress-card {
       display: none;
       background: var(--bg-secondary);
       border: 1px solid var(--border-color);
       border-left: 4px solid var(--accent);
       border-radius: var(--radius);
-      padding: 16px 20px;
-      margin-bottom: 20px;
+      padding: 12px 14px;
+      margin-bottom: 14px;
     }
     .progress-header {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin-bottom: 10px;
+      margin-bottom: 6px;
       font-size: 13px;
     }
     .progress-bar-track {
       width: 100%;
-      height: 10px;
+      height: 6px;
       background: var(--bg-primary);
-      border-radius: 5px;
+      border-radius: 3px;
       overflow: hidden;
       border: 1px solid var(--border-color);
-      margin-bottom: 10px;
+      margin-bottom: 6px;
     }
     .progress-bar-fill {
       height: 100%;
@@ -344,400 +507,718 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
-      font-size: 12px;
+      font-size: 11px;
       color: var(--text-secondary);
       font-family: monospace;
-    }
-    .progress-current-file {
-      color: var(--accent);
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      max-width: 60%;
-    }
-
-    /* Search & Query Boxes */
-    .search-bar-row {
-      display: flex;
       flex-wrap: wrap;
-      gap: 12px;
-      margin-bottom: 20px;
+      gap: 4px;
     }
 
-    .input-field {
-      flex: 1;
-      min-width: 250px;
-      background: var(--bg-secondary);
-      border: 1px solid var(--border-color);
-      color: var(--text-primary);
-      padding: 10px 14px;
-      border-radius: var(--radius);
-      font-size: 14px;
-      outline: none;
-    }
-    .input-field:focus { border-color: var(--accent); }
-
-    .select-field {
-      background: var(--bg-secondary);
-      border: 1px solid var(--border-color);
-      color: var(--text-primary);
-      padding: 10px 14px;
-      border-radius: var(--radius);
-      font-size: 14px;
-      outline: none;
-    }
-
-    /* Evidence Cards */
-    .evidence-item {
-      background: var(--bg-secondary);
-      border: 1px solid var(--border-color);
-      border-radius: var(--radius);
-      padding: 16px;
-      margin-bottom: 14px;
-    }
-
-    .evidence-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 8px;
-    }
-
-    .citation-title {
-      font-weight: 600;
-      color: var(--accent);
-      font-size: 14px;
-    }
-
-    .score-badge {
-      font-size: 12px;
-      background: #1f6feb22;
-      color: #58a6ff;
-      padding: 3px 8px;
-      border-radius: 8px;
-      font-weight: 600;
-    }
-
-    .evidence-body {
-      font-family: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", Menlo, monospace;
-      font-size: 12px;
-      line-height: 1.5;
-      color: #c9d1d9;
-      background: var(--bg-primary);
-      padding: 12px;
-      border-radius: 4px;
-      white-space: pre-wrap;
-      max-height: 250px;
-      overflow-y: auto;
-      border: 1px solid var(--border-color);
-    }
-
-    /* Modal / Dialog */
-    .modal {
-      display: none;
-      position: fixed;
-      top: 0; left: 0; right: 0; bottom: 0;
-      background: rgba(0,0,0,0.75);
-      backdrop-filter: blur(4px);
-      z-index: 1000;
-      align-items: center;
-      justify-content: center;
-    }
-    .modal.active { display: flex; }
-
-    .modal-content {
-      background: var(--bg-secondary);
-      border: 1px solid var(--border-color);
-      border-radius: var(--radius);
-      width: 92%;
-      max-width: 720px;
-      max-height: 88vh;
-      display: flex;
-      flex-direction: column;
-      box-shadow: 0 10px 30px rgba(0,0,0,0.5);
-    }
-
-    .modal-header {
-      padding: 16px 20px;
-      border-bottom: 1px solid var(--border-color);
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-
-    .modal-body {
-      padding: 20px;
-      overflow-y: auto;
-      font-size: 13px;
-    }
-
-    .modal-close {
-      background: none;
-      border: none;
-      color: var(--text-secondary);
-      font-size: 20px;
-      cursor: pointer;
-    }
-
-    .json-pre {
-      background: var(--bg-primary);
-      padding: 12px;
-      border-radius: 4px;
-      font-family: monospace;
-      font-size: 12px;
-      overflow-x: auto;
-      white-space: pre-wrap;
-      color: #79c0ff;
-    }
-
-    /* Folder Chooser Browser in Modal */
-    .chooser-shortcuts {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 6px;
-      margin-bottom: 12px;
-    }
-
-    .chooser-shortcut-btn {
+    /* Model Cards */
+    .model-card {
       background: var(--bg-tertiary);
       border: 1px solid var(--border-color);
-      color: var(--text-secondary);
-      padding: 5px 12px;
-      border-radius: 12px;
-      font-size: 12px;
-      font-weight: 500;
-      cursor: pointer;
-      transition: all 0.2s;
+      border-radius: var(--radius);
+      padding: 12px 14px;
+      margin-bottom: 8px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 10px;
     }
-    .chooser-shortcut-btn:hover {
-      color: var(--text-primary);
+    .model-card.active-model {
       border-color: var(--accent);
       background: #1c2128;
     }
 
-    .chooser-path-bar {
-      display: flex;
-      gap: 8px;
-      margin-bottom: 12px;
-    }
-
-    .chooser-path-input {
-      flex: 1;
-      background: var(--bg-primary);
+    /* Tables & Responsive Explorer */
+    .table-container {
+      width: 100%;
+      overflow-x: auto;
       border: 1px solid var(--border-color);
+      border-radius: var(--radius);
+    }
+    .explorer-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+      text-align: left;
+      min-width: 460px;
+    }
+    .explorer-table th, .explorer-table td {
+      padding: 8px 10px;
+      border-bottom: 1px solid var(--border-color);
+    }
+    .explorer-table th {
+      background-color: var(--bg-tertiary);
+      color: var(--text-secondary);
+      font-weight: 600;
+    }
+    .explorer-table tr:hover { background-color: #1c2128; }
+
+    /* Breadcrumbs */
+    .breadcrumb-bar {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      background: var(--bg-tertiary);
       padding: 8px 12px;
       border-radius: var(--radius);
-      font-family: monospace;
-      font-size: 12px;
-      color: var(--accent);
-      outline: none;
-    }
-    .chooser-path-input:focus {
-      border-color: var(--accent);
-    }
-
-    .folder-list-box {
+      margin-bottom: 12px;
+      flex-wrap: wrap;
       border: 1px solid var(--border-color);
-      border-radius: var(--radius);
-      max-height: 280px;
-      overflow-y: auto;
-      background: var(--bg-primary);
     }
-
-    .folder-item-row {
-      padding: 9px 14px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      cursor: pointer;
-      border-bottom: 1px solid #1c2128;
-      font-size: 13px;
-    }
-    .folder-item-row:hover {
-      background: #161b22;
+    .crumb-link {
       color: var(--accent);
+      cursor: pointer;
+      font-weight: 500;
     }
 
-    .file-item-row {
-      padding: 7px 14px;
+    /* ---------------- Modern Mobile AI Agent Chat Layout ---------------- */
+
+    .chat-view-wrapper {
       display: flex;
-      justify-content: space-between;
-      align-items: center;
-      border-bottom: 1px solid #161b22;
-      font-size: 12px;
-      color: var(--text-secondary);
-    }
-
-    /* AI Chat Output */
-    .chat-bubble {
+      flex-direction: column;
+      height: calc(100vh - 130px);
+      max-height: 820px;
       background: var(--bg-secondary);
       border: 1px solid var(--border-color);
       border-radius: var(--radius);
-      padding: 20px;
-      margin-top: 16px;
-      line-height: 1.6;
+      overflow: hidden;
+      position: relative;
     }
 
-    .chat-bubble details {
-      margin-top: 14px;
-      border: 1px solid var(--border-color);
-      border-radius: var(--radius);
-      background: var(--bg-primary);
+    .chat-topbar {
       padding: 10px 14px;
-    }
-
-    .chat-bubble details summary {
-      cursor: pointer;
-      font-weight: 600;
-      color: var(--accent);
-      user-select: none;
-      outline: none;
-    }
-
-    .chat-bubble details[open] summary {
-      margin-bottom: 12px;
+      background: var(--bg-tertiary);
       border-bottom: 1px solid var(--border-color);
-      padding-bottom: 8px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
     }
 
-    .chat-bubble pre {
-      background: var(--bg-primary);
-      padding: 12px;
-      border-radius: 6px;
-      border: 1px solid var(--border-color);
-      font-family: monospace;
-      font-size: 12px;
-      margin: 10px 0;
-      white-space: pre-wrap;
-      color: #c9d1d9;
+    .chat-title-group {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-width: 0;
     }
 
-    /* In-App Toast Notification Banner */
-    .toast-container {
-      position: fixed;
-      bottom: 24px;
-      right: 24px;
-      z-index: 9999;
+    .chat-title-text {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text-primary);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .chat-stream {
+      flex: 1;
+      overflow-y: auto;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+      scroll-behavior: smooth;
+    }
+
+    /* Message Bubbles */
+    .chat-msg {
+      display: flex;
+      flex-direction: column;
+      max-width: 100%;
+      animation: fadeInMsg 0.2s ease-out;
+    }
+    @keyframes fadeInMsg { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+
+    .chat-msg-user {
+      align-self: flex-end;
+      max-width: 85%;
+    }
+
+    .chat-user-bubble {
+      background: #1f6feb22;
+      border: 1px solid #1f6feb55;
+      color: #fff;
+      padding: 10px 14px;
+      border-radius: 14px 14px 2px 14px;
+      font-size: 14px;
+      line-height: 1.5;
+      word-break: break-word;
+    }
+
+    .chat-msg-assistant {
+      align-self: flex-start;
+      width: 100%;
+    }
+
+    .chat-assistant-container {
       display: flex;
       flex-direction: column;
       gap: 10px;
+      width: 100%;
     }
 
-    .toast {
+    /* Collapsible Operations Accordion (Matching Screenshot) */
+    .op-accordion {
+      border: 1px solid var(--border-color);
+      background: var(--bg-primary);
+      border-radius: 6px;
+      overflow: hidden;
+      margin-bottom: 4px;
+    }
+
+    .op-header {
+      padding: 8px 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      cursor: pointer;
+      user-select: none;
+      font-size: 13px;
+      color: var(--text-secondary);
+      font-weight: 500;
+      transition: background 0.15s;
+    }
+    .op-header:hover {
+      background: var(--bg-tertiary);
+      color: var(--text-primary);
+    }
+    .op-header .chevron {
+      font-size: 12px;
+      transition: transform 0.2s;
+    }
+    .op-header.open .chevron {
+      transform: rotate(90deg);
+    }
+
+    .op-body {
+      display: none;
+      padding: 10px 12px;
+      border-top: 1px solid var(--border-color);
+      background: #090d13;
+      font-size: 12px;
+      font-family: monospace;
+      color: var(--text-secondary);
+      line-height: 1.6;
+    }
+    .op-body.open { display: block; }
+
+    .op-step-item {
+      padding: 4px 0;
+      border-bottom: 1px solid #161b22;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+    .op-step-item:last-child { border-bottom: none; }
+
+    /* Grounded Answer Card */
+    .answer-content {
+      font-size: 14px;
+      line-height: 1.6;
+      color: var(--text-primary);
+      word-break: break-word;
+    }
+
+    /* Approval & Undo Banners */
+    .approval-banner {
+      background: #341a04;
+      border: 1px solid #d29922;
+      border-radius: var(--radius);
+      padding: 12px 14px;
+      margin-top: 8px;
+    }
+
+    /* File Diff Comparison Section in Approval Banner */
+    .diff-section-container {
+      margin-top: 10px;
+      margin-bottom: 12px;
       background: var(--bg-secondary);
       border: 1px solid var(--border-color);
-      border-left: 4px solid var(--accent);
-      color: var(--text-primary);
-      padding: 12px 18px;
       border-radius: var(--radius);
-      box-shadow: 0 8px 24px rgba(0,0,0,0.5);
-      font-size: 13px;
-      max-width: 400px;
-      display: flex;
-      align-items: flex-start;
-      gap: 10px;
-      animation: toastSlideIn 0.25s ease-out;
+      overflow: hidden;
     }
-    .toast-success { border-left-color: var(--success); }
-    .toast-error { border-left-color: var(--danger); }
-    .toast-warning { border-left-color: var(--warning); }
+    .diff-summary-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 8px 12px;
+      background: var(--bg-tertiary);
+      border-bottom: 1px solid var(--border-color);
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      user-select: none;
+    }
+    .diff-pills {
+      display: flex;
+      gap: 6px;
+    }
+    .diff-pill {
+      font-size: 10px;
+      font-weight: 700;
+      padding: 2px 6px;
+      border-radius: 10px;
+    }
+    .diff-pill.added {
+      background: rgba(46, 160, 67, 0.2);
+      color: #3fb950;
+      border: 1px solid rgba(46, 160, 67, 0.4);
+    }
+    .diff-pill.moved {
+      background: rgba(31, 111, 235, 0.2);
+      color: #58a6ff;
+      border: 1px solid rgba(31, 111, 235, 0.4);
+    }
+    .diff-pill.deleted {
+      background: rgba(248, 81, 73, 0.2);
+      color: #f85149;
+      border: 1px solid rgba(248, 81, 73, 0.4);
+    }
+    .diff-list {
+      padding: 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      max-height: 280px;
+      overflow-y: auto;
+    }
+    .diff-card {
+      background: #0d1117;
+      border: 1px solid #30363d;
+      border-radius: 6px;
+      overflow: hidden;
+      font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+      font-size: 11px;
+    }
+    .diff-card-header {
+      padding: 5px 8px;
+      background: #161b22;
+      border-bottom: 1px solid #21262d;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .diff-badge {
+      font-size: 9px;
+      font-weight: 700;
+      padding: 1px 5px;
+      border-radius: 4px;
+      letter-spacing: 0.5px;
+    }
+    .diff-badge.move { background: rgba(56, 139, 253, 0.15); color: #58a6ff; border: 1px solid #388bfd44; }
+    .diff-badge.mkdir { background: rgba(46, 160, 67, 0.15); color: #3fb950; border: 1px solid #2ea04344; }
+    .diff-badge.create { background: rgba(46, 160, 67, 0.15); color: #3fb950; border: 1px solid #2ea04344; }
+    .diff-badge.delete { background: rgba(248, 81, 73, 0.15); color: #f85149; border: 1px solid #f8514944; }
+    .diff-badge.organize { background: rgba(163, 113, 247, 0.15); color: #bc8cff; border: 1px solid #a371f744; }
+    .diff-viewer {
+      padding: 6px 8px;
+      line-height: 1.4;
+    }
+    .diff-line {
+      padding: 2px 6px;
+      margin: 1px 0;
+      border-radius: 3px;
+      white-space: pre-wrap;
+      word-break: break-all;
+    }
+    .diff-line.diff-rem {
+      background: rgba(248, 81, 73, 0.15);
+      color: #f85149;
+    }
+    .diff-line.diff-add {
+      background: rgba(46, 160, 67, 0.15);
+      color: #3fb950;
+    }
+    .diff-line.diff-info {
+      color: #8b949e;
+    }
 
-    @keyframes toastSlideIn {
-      from { transform: translateX(100%); opacity: 0; }
-      to { transform: translateX(0); opacity: 1; }
+    /* Realtime Context Window Tracker & Compression UI */
+    .context-meter-badge {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 10px;
+      background: var(--bg-tertiary);
+      border: 1px solid var(--border-color);
+      border-radius: 20px;
+      font-size: 11px;
+      color: var(--text-primary);
+      user-select: none;
+      transition: all 0.2s ease;
+    }
+    .context-meter-badge:hover {
+      border-color: var(--accent);
+      background: rgba(88, 166, 255, 0.08);
+    }
+    .context-mini-bar {
+      width: 46px;
+      height: 6px;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 3px;
+      overflow: hidden;
+      display: inline-block;
+      vertical-align: middle;
+    }
+    .context-mini-fill {
+      height: 100%;
+      background: #238636;
+      border-radius: 3px;
+      transition: width 0.3s ease, background 0.3s ease;
+    }
+    .context-mini-fill.warn { background: #d29922; }
+    .context-mini-fill.danger { background: #f85149; }
+    .context-mini-fill.compressed { background: #a371f7; }
+
+    .msg-meta-bar {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 8px;
+      padding-top: 6px;
+      border-top: 1px solid rgba(255, 255, 255, 0.06);
+      font-size: 11px;
+      color: var(--text-secondary);
+    }
+    .meta-dot {
+      color: var(--text-muted);
+      font-size: 9px;
+    }
+    .context-usage-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 1px 6px;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      font-family: ui-monospace, monospace;
+      font-size: 10px;
+    }
+    .context-usage-tag.compressed {
+      border-color: rgba(163, 113, 247, 0.4);
+      background: rgba(163, 113, 247, 0.1);
+      color: #bc8cff;
+    }
+    .compressed-pill {
+      background: rgba(163, 113, 247, 0.25);
+      color: #d2a8ff;
+      border-radius: 8px;
+      padding: 1px 5px;
+      font-weight: 700;
+      font-size: 9px;
+      margin-left: 2px;
+    }
+
+    /* Floating Task Banner (Bottom) */
+    .floating-task-bar {
+      display: none;
+      background: var(--bg-tertiary);
+      border-top: 1px solid var(--border-color);
+      padding: 8px 14px;
+      font-size: 12px;
+      color: var(--text-secondary);
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    /* Modern Bottom Input Box (Matching Screenshot) */
+    .agent-input-container {
+      background: var(--bg-tertiary);
+      border-top: 1px solid var(--border-color);
+      padding: 10px 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .agent-textarea {
+      width: 100%;
+      min-height: 48px;
+      max-height: 120px;
+      background: var(--bg-primary);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius);
+      color: var(--text-primary);
+      padding: 10px 12px;
+      font-size: 13px;
+      font-family: var(--font-family);
+      resize: none;
+      outline: none;
+      line-height: 1.4;
+    }
+    .agent-textarea:focus { border-color: var(--accent); }
+
+    .agent-input-footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .agent-model-pill {
+      font-size: 12px;
+      color: var(--text-secondary);
+      background: var(--bg-primary);
+      border: 1px solid var(--border-color);
+      padding: 4px 10px;
+      border-radius: 14px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .agent-model-pill:hover {
+      border-color: var(--accent);
+      color: var(--text-primary);
+    }
+
+    .btn-send {
+      width: 38px;
+      height: 38px;
+      border-radius: 50%;
+      background: #238636;
+      border: none;
+      color: #fff;
+      font-size: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: background 0.2s;
+      flex-shrink: 0;
+    }
+    .btn-send:hover { background: #2ea043; }
+    .btn-send:disabled { background: var(--bg-primary); color: var(--text-secondary); cursor: not-allowed; }
+    .btn-send.stop-btn { background: #da3633; }
+
+    /* Modal System */
+    .modal {
+      display: none;
+      position: fixed;
+      top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(0, 0, 0, 0.75);
+      z-index: 1000;
+      justify-content: center;
+      align-items: center;
+      padding: 16px;
+    }
+    .modal.active { display: flex; }
+    .modal-content {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius);
+      width: 100%;
+      max-width: 600px;
+      max-height: 90vh;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+    }
+    .modal-header {
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--border-color);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .modal-body { padding: 14px 16px; }
+
+    /* Sessions Drawer */
+    .session-card-row {
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--border-color);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      cursor: pointer;
+    }
+    .session-card-row:hover { background: var(--bg-tertiary); }
+    .session-card-row.active { background: #1f6feb22; border-left: 3px solid var(--accent); }
+
+    /* Toast */
+    .toast-container {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      z-index: 2000;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      max-width: 90vw;
+    }
+    .toast {
+      padding: 10px 16px;
+      border-radius: var(--radius);
+      font-size: 13px;
+      font-weight: 500;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+      animation: toastIn 0.25s ease-out;
+    }
+    @keyframes toastIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    .toast-success { background: #238636; color: #fff; }
+    .toast-error { background: #da3633; color: #fff; }
+    .toast-info { background: #1f6feb; color: #fff; }
+
+    /* Mobile Responsive Optimizations */
+    @media (max-width: 768px) {
+      header { padding: 8px 12px; }
+      main { padding: 10px 8px; }
+      .chat-view-wrapper { height: calc(100vh - 115px); }
+      .chat-topbar { flex-wrap: wrap; padding: 8px 10px; gap: 6px; }
+      .metrics-grid { grid-template-columns: 1fr 1fr; gap: 8px; }
+      .card { padding: 12px; }
+      .btn { min-height: 36px; font-size: 12px; }
+      .modal-content {
+        position: fixed;
+        bottom: 0;
+        border-radius: 12px 12px 0 0;
+        max-height: 85vh;
+        margin: 0;
+      }
     }
   </style>
 </head>
 <body>
 
-  <!-- Top Header -->
+  <!-- Header -->
   <header>
-    <div class="brand">
-      <div class="logo-icon">M</div>
-      <div>
-        <div class="brand-title">MindFS Intelligence</div>
-      </div>
-      <div class="workspace-badge" onclick="openFolderChooser('workspace')" title="Click to choose a different workspace folder">
-        <span>📁</span>
-        <span id="wsRootDisplay">Loading...</span>
-        <span style="color:var(--accent); font-size:11px; font-weight:600;">[Choose Folder]</span>
+    <div class="brand-section">
+      <div class="logo"><svg width="170" height="44" viewBox="0 0 170 44" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="iconGrad" x1="0" y1="0" x2="44" y2="44" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#bc8cff"/>
+      <stop offset="100%" stop-color="#58a6ff"/>
+    </linearGradient>
+    <linearGradient id="textGrad" x1="48" y1="0" x2="170" y2="0" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#bc8cff"/>
+      <stop offset="60%" stop-color="#58a6ff"/>
+      <stop offset="100%" stop-color="#79c0ff"/>
+    </linearGradient>
+    <filter id="glow">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="1.5" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="nodeglow">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="0.8" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+
+  <!-- Outer ring edges (hexagon) -->
+  <line x1="22" y1="5"  x2="36" y2="12" stroke="url(#iconGrad)" stroke-width="0.9" opacity="0.5"/>
+  <line x1="36" y1="12" x2="36" y2="26" stroke="url(#iconGrad)" stroke-width="0.9" opacity="0.5"/>
+  <line x1="36" y1="26" x2="22" y2="33" stroke="url(#iconGrad)" stroke-width="0.9" opacity="0.5"/>
+  <line x1="22" y1="33" x2="8"  y2="26" stroke="url(#iconGrad)" stroke-width="0.9" opacity="0.5"/>
+  <line x1="8"  y1="26" x2="8"  y2="12" stroke="url(#iconGrad)" stroke-width="0.9" opacity="0.5"/>
+  <line x1="8"  y1="12" x2="22" y2="5"  stroke="url(#iconGrad)" stroke-width="0.9" opacity="0.5"/>
+
+  <!-- Spokes from center to nodes -->
+  <line x1="22" y1="19" x2="22" y2="5"  stroke="url(#iconGrad)" stroke-width="1.1" opacity="0.7"/>
+  <line x1="22" y1="19" x2="36" y2="12" stroke="url(#iconGrad)" stroke-width="1.1" opacity="0.7"/>
+  <line x1="22" y1="19" x2="36" y2="26" stroke="url(#iconGrad)" stroke-width="1.1" opacity="0.7"/>
+  <line x1="22" y1="19" x2="22" y2="33" stroke="url(#iconGrad)" stroke-width="1.1" opacity="0.7"/>
+  <line x1="22" y1="19" x2="8"  y2="26" stroke="url(#iconGrad)" stroke-width="1.1" opacity="0.7"/>
+  <line x1="22" y1="19" x2="8"  y2="12" stroke="url(#iconGrad)" stroke-width="1.1" opacity="0.7"/>
+
+  <!-- Outer nodes -->
+  <circle cx="22" cy="5"  r="2.2" fill="url(#iconGrad)" filter="url(#nodeglow)" opacity="0.95"/>
+  <circle cx="36" cy="12" r="2.2" fill="url(#iconGrad)" filter="url(#nodeglow)" opacity="0.95"/>
+  <circle cx="36" cy="26" r="2.2" fill="url(#iconGrad)" filter="url(#nodeglow)" opacity="0.95"/>
+  <circle cx="22" cy="33" r="2.2" fill="url(#iconGrad)" filter="url(#nodeglow)" opacity="0.95"/>
+  <circle cx="8"  cy="26" r="2.2" fill="url(#iconGrad)" filter="url(#nodeglow)" opacity="0.95"/>
+  <circle cx="8"  cy="12" r="2.2" fill="url(#iconGrad)" filter="url(#nodeglow)" opacity="0.95"/>
+
+  <!-- Center hub (bright, glowing) -->
+  <circle cx="22" cy="19" r="4" fill="url(#iconGrad)" filter="url(#glow)"/>
+  <circle cx="22" cy="19" r="2.2" fill="white" opacity="0.25"/>
+
+  <!-- MindFS wordmark -->
+  <text x="50" y="29"
+    font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif"
+    font-size="23" font-weight="700" letter-spacing="-0.5"
+    fill="url(#textGrad)">MindFS</text>
+</svg></div>
+      <div class="workspace-dropdown-container">
+        <div class="workspace-badge" onclick="toggleWorkspaceDropdown(event)" title="Click to switch recent workspaces or choose directory">
+          <span>📂</span>
+          <span id="wsRootDisplay">Loading...</span>
+          <span style="font-size: 10px; margin-left: 2px; color: var(--text-secondary);">▾</span>
+        </div>
+        <div id="workspaceDropdownMenu" class="workspace-dropdown-menu">
+          <div class="ws-dropdown-header">
+            <span>Recent Workspaces</span>
+            <button class="btn btn-primary" style="padding: 2px 8px; font-size: 10px; min-height: 22px;" onclick="openFolderChooser('workspace'); hideWorkspaceDropdown();">
+              ➕ Browse...
+            </button>
+          </div>
+          <div id="recentWorkspacesList" class="ws-dropdown-list">
+            <div style="padding: 10px; text-align: center; color: var(--text-secondary); font-size: 11px;">Loading workspaces...</div>
+          </div>
+        </div>
       </div>
     </div>
     <div class="header-stats">
-      <span class="pill pill-privacy">100% Local &amp; Private</span>
-      <span class="pill pill-memory" id="peakRssBadge">Peak RSS: -- MB / &lt;1.7 GB</span>
+      <span class="pill pill-privacy">🛡️ Local &amp; Private</span>
+      <span class="pill pill-memory" id="peakRssBadge">Peak RSS: 0 MB / &lt;2.0 GB</span>
     </div>
   </header>
 
-  <!-- Tab Bar -->
+  <!-- Responsive Navigation Tabs -->
   <nav class="tabs">
-    <button class="tab-btn active" onclick="switchTab('dashboard')">📊 Dashboard</button>
-    <button class="tab-btn" onclick="switchTab('explorer')">📁 Filesystem Explorer</button>
-    <button class="tab-btn" onclick="switchTab('search')">🔍 Semantic Search</button>
-    <button class="tab-btn" onclick="switchTab('chat')">💬 AI Assistant (RAG)</button>
-    <button class="tab-btn" onclick="switchTab('diagnostics')">📈 Memory Diagnostics</button>
+    <button class="tab-btn active" onclick="switchTab('dashboard')"><span class="tab-icon">📊</span><span class="tab-label">Dashboard</span></button>
+    <button class="tab-btn" onclick="switchTab('explorer')"><span class="tab-icon">📁</span><span class="tab-label">Files</span></button>
+    <button class="tab-btn" onclick="switchTab('search')"><span class="tab-icon">🔍</span><span class="tab-label">Search</span></button>
+    <button class="tab-btn" onclick="switchTab('chat')"><span class="tab-icon">🤖</span><span class="tab-label">Assistant</span></button>
+    <button class="tab-btn" onclick="switchTab('models')"><span class="tab-icon">⚙️</span><span class="tab-label">Models</span></button>
+    <button class="tab-btn" onclick="switchTab('diagnostics')"><span class="tab-icon">📈</span><span class="tab-label">Diagnostics</span></button>
   </nav>
 
-  <!-- Main Content -->
+  <!-- Main View -->
   <main>
+    <!-- Toast Container -->
+    <div class="toast-container" id="toastContainer"></div>
 
-    <!-- Dashboard Tab -->
+    <!-- 1. Dashboard Tab -->
     <div id="tab-dashboard" class="tab-pane active">
       <div class="metrics-grid">
-        <div class="card">
-          <div class="card-title">Files Indexed</div>
+        <div class="card card-files">
+          <div class="card-title">Indexed Files</div>
           <div class="card-value" id="metricFilesIndexed">0</div>
           <div class="card-subtext" id="metricFilesTotal">Total scanned: 0</div>
         </div>
-        <div class="card">
+        <div class="card card-ai">
           <div class="card-title">Semantic Artifacts</div>
           <div class="card-value" id="metricArtifacts">0</div>
-          <div class="card-subtext">Page, table, and media representations</div>
+          <div class="card-subtext">Multi-modal extractions</div>
         </div>
-        <div class="card">
-          <div class="card-title">Vector Embeddings</div>
+        <div class="card card-vectors">
+          <div class="card-title">Vector Chunks</div>
           <div class="card-value" id="metricVectors">0</div>
           <div class="card-subtext">Persisted in FAISS</div>
         </div>
-        <div class="card">
-          <div class="card-title">Process Peak RSS</div>
+        <div class="card card-rss">
+          <div class="card-title">Peak Process RSS</div>
           <div class="card-value" id="metricPeakRss">0 MB</div>
-          <div class="card-subtext">Budget ceiling: 1740 MB (2 GB)</div>
-        </div>
-      </div>
-
-      <!-- Folder Chooser & Indexing Panel -->
-      <div class="card">
-        <div class="card-title">Folder Selection &amp; Incremental Indexing</div>
-        <div style="margin-top: 14px; display: flex; flex-direction: column; gap: 12px;">
-          
-          <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
-            <span style="font-size: 13px; color: var(--text-secondary); font-weight: 500;">Target Folder:</span>
-            <div class="folder-tag" id="dashSelectedFolderTag">
-              <span>📁</span>
-              <span id="dashSelectedFolderText">Entire Workspace (Root)</span>
-            </div>
-            <button class="btn btn-accent" onclick="openFolderChooser('index_target')">📂 Browse &amp; Choose Folder...</button>
-            <button class="btn" onclick="resetIndexFolderToRoot()">Reset to Root</button>
-          </div>
-
-          <div class="btn-row" style="margin-top: 4px; margin-bottom: 0;">
-            <label class="checkbox-label" style="background: var(--bg-tertiary); padding: 8px 12px; border-radius: var(--radius); border: 1px solid var(--border-color);">
-              <input type="checkbox" id="dashRecursiveCheckbox" checked>
-              <strong style="color:var(--text-primary);">Recursive Indexing</strong>
-              <span style="color:var(--text-secondary); font-size:12px;">(include all nested subfolders)</span>
-            </label>
-            <button class="btn btn-primary" onclick="triggerCustomIndex()" id="btnIndexTarget" style="padding: 9px 20px; font-size: 14px;">⚡ Index Selected Folder</button>
-            <button class="btn" onclick="confirmRebuildPrompt()">🔄 Full Rebuild</button>
-          </div>
-
+          <div class="card-subtext" id="metricPeakRssSubtext">Budget: &lt; 2,048 MB</div>
         </div>
       </div>
 
       <!-- Live Real-Time Indexing Progress Card -->
       <div id="indexingProgressCard" class="progress-card">
         <div class="progress-header">
-          <span style="font-weight:600; color:var(--text-primary); display:flex; align-items:center; gap:8px;">
+          <span style="font-weight:600; color:var(--text-primary); display:flex; align-items:center; gap:6px;">
             <span id="progressSpinner">⚡</span>
             <span id="progressTitle">Indexing Files...</span>
           </span>
@@ -747,117 +1228,295 @@
           <div id="progressBarFill" class="progress-bar-fill"></div>
         </div>
         <div class="progress-details">
-          <span class="progress-current-file" id="progressCurrentFile">Preparing scan...</span>
-          <span id="progressCounts">Processed: 0 / 0 (Indexed: 0, Skipped: 0)</span>
+          <span id="progressCurrentFile" style="color:var(--accent); word-break:break-all;">Preparing scan...</span>
+          <span id="progressCounts">Processed: 0 / 0</span>
         </div>
       </div>
 
+      <!-- Active Indexed Folders List Panel -->
       <div class="card">
-        <div class="card-title">Persistent Dual-Store Status</div>
-        <p style="font-size: 13px; color: var(--text-secondary); margin-top: 8px;">
-          Authoritative SQLite metadata database and FAISS CPU vector index are active and persisted. Incremental indexing skips unchanged files automatically.
-        </p>
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; gap:10px;">
+          <div>
+            <div class="card-title">📁 Indexed Folders</div>
+            <div style="font-size:11px; color:var(--text-secondary); margin-top:2px;">All indexed folders are searchable simultaneously.</div>
+          </div>
+          <button class="btn btn-primary" onclick="openFolderChooser('add_folder')" style="white-space:nowrap; flex-shrink:0; padding:6px 12px; font-size:12px;">
+            ➕ Add Folder
+          </button>
+        </div>
+
+        <div id="indexedFoldersListContainer" style="display:flex; flex-direction:column; gap:8px;">
+          <div style="padding:16px; text-align:center; color:var(--text-secondary); font-size:13px;">
+            Loading indexed folders...
+          </div>
+        </div>
       </div>
     </div>
 
-    <!-- Explorer Tab -->
+    <!-- 2. Explorer Tab -->
     <div id="tab-explorer" class="tab-pane">
-      <!-- Breadcrumb Bar -->
+      <div style="display:flex; align-items:center; gap:8px; margin-bottom:10px; flex-wrap:wrap;">
+        <span style="font-size:11px; color:var(--text-secondary); font-weight:700;">INDEXED ROOTS:</span>
+        <div id="explorerFolderPills" style="display:flex; gap:6px; flex-wrap:wrap;"></div>
+      </div>
+
       <div class="breadcrumb-bar" id="breadcrumbBar">
         <span class="crumb-link" onclick="navigateToFolder('')">📁 Workspace Root</span>
       </div>
 
       <div class="btn-row">
-        <button class="btn btn-primary" onclick="indexCurrentExplorerFolder()" id="btnIndexExplorerFolder">⚡ Index Current Folder (<span id="explorerRecursiveLabel">Recursive</span>)</button>
-        <label class="checkbox-label" style="margin-left: 8px;">
-          <input type="checkbox" id="explorerRecursiveCheckbox" checked onchange="updateExplorerRecursiveLabel()">
-          <span>Recursive</span>
-        </label>
+        <button class="btn btn-primary" onclick="indexCurrentExplorerFolder()" id="btnIndexExplorerFolder">⚡ Index Folder</button>
         <button class="btn" onclick="loadFiles(currentExplorerPath)">↻ Refresh</button>
       </div>
 
-      <div class="card" style="padding: 0; overflow: hidden;">
+      <div class="table-container">
         <table class="explorer-table">
           <thead>
             <tr>
               <th>Name</th>
-              <th>Type / Category</th>
+              <th>Type</th>
               <th>Size</th>
               <th>Action</th>
             </tr>
           </thead>
           <tbody id="filesTableBody">
-            <tr><td colspan="4" style="text-align: center; color: var(--text-secondary);">Loading files...</td></tr>
+            <tr><td colspan="4" style="text-align:center;">Loading files...</td></tr>
           </tbody>
         </table>
       </div>
     </div>
 
-    <!-- Search Tab -->
+    <!-- 3. Search Tab -->
     <div id="tab-search" class="tab-pane">
       <div class="search-bar-row">
-        <input type="text" id="searchInput" class="input-field" placeholder="Enter semantic query (e.g. database migration, customer plan, audio duration)..." onkeydown="if(event.key==='Enter') executeSearch()">
-        <input type="text" id="searchPathFilter" class="input-field" style="max-width: 200px;" placeholder="Path filter (optional)">
-        <select id="searchTypeFilter" class="select-field">
-          <option value="">All Types</option>
-          <option value="document">Documents</option>
-          <option value="structured">Structured</option>
-          <option value="image">Images</option>
-          <option value="audio">Audio</option>
-          <option value="video">Video</option>
-          <option value="archive">Archives</option>
-          <option value="binary">Binaries</option>
-        </select>
+        <input type="text" id="searchInput" class="input-field" placeholder="Enter semantic query (e.g. database migration, quarterly statements)..." onkeydown="if(event.key==='Enter') executeSearch()">
         <button class="btn btn-primary" onclick="executeSearch()">Search</button>
       </div>
       <div id="searchResults"></div>
     </div>
 
-    <!-- Chat Tab -->
+    <!-- 4. Persistent Modern Assistant & Agent Chat Tab (Screenshot Style) -->
     <div id="tab-chat" class="tab-pane">
-      <div class="search-bar-row">
-        <input type="text" id="chatInput" class="input-field" placeholder="Ask MindFS anything (e.g. 'what files are in this folder?', 'what database is used for Apollo?')..." onkeydown="if(event.key==='Enter') executeAsk()">
-        <button class="btn btn-primary" onclick="executeAsk()">Ask MindFS</button>
+      <div class="chat-view-wrapper">
+        <!-- Chat Topbar with Session Switcher -->
+        <div class="chat-topbar">
+          <div class="chat-title-group">
+            <button class="btn" style="padding:4px 8px; min-height:30px; font-size:12px;" onclick="openSessionsModal()">
+              💬 Chats
+            </button>
+            <button class="btn" style="padding:4px 8px; min-height:30px; font-size:12px;" onclick="openOperationsHistoryModal()" title="View Persistent Operation History & Audit Log">
+              📜 History
+            </button>
+            <div class="chat-title-text" id="activeSessionTitleDisplay">MindFS Intelligence Agent</div>
+          </div>
+          <div style="display:flex; gap:6px; align-items:center;">
+            <!-- Realtime Context Usage Indicator -->
+            <div id="liveContextPill" class="context-meter-badge" title="Active LLM Context Window Fullness">
+              <span style="font-size:12px;">🧠</span>
+              <span style="color:var(--text-secondary); font-size:11px;">Context:</span>
+              <span id="liveCtxText" style="font-weight:700; font-family:ui-monospace, monospace; font-size:11px;">0 / 2,048 (0%)</span>
+              <div class="context-mini-bar">
+                <div id="liveCtxProgress" class="context-mini-fill" style="width: 0%;"></div>
+              </div>
+            </div>
+            <button class="btn" style="padding:4px 8px; min-height:30px; font-size:12px; background:rgba(248,81,73,0.1); border-color:rgba(248,81,73,0.4); color:#f85149; font-weight:600;" onclick="revertLastOperation()" title="Revert Last Mutating Filesystem Action">
+              ↩️ Revert
+            </button>
+            <button class="btn btn-primary" style="padding:4px 10px; min-height:30px; font-size:12px;" onclick="startNewChatSession()">
+              ➕ New
+            </button>
+          </div>
+        </div>
+
+        <!-- Chat Message Timeline -->
+        <div class="chat-stream" id="chatMessageStream">
+          <div style="text-align:center; padding:20px; color:var(--text-secondary); font-size:13px;">
+            Loading conversation history...
+          </div>
+        </div>
+
+        <!-- Floating Active Task Status Indicator -->
+        <div class="floating-task-bar" id="chatActiveTaskBar">
+          <span style="display:flex; align-items:center; gap:6px;">
+            <span>⚡</span> <span id="chatTaskDescription">1 task running: Indexing background filesystem vectors</span>
+          </span>
+          <span style="cursor:pointer; color:var(--accent);" onclick="switchTab('dashboard')">View ›</span>
+        </div>
+
+        <!-- Modern Bottom Input Box (Matching Screenshot) -->
+        <div class="agent-input-container">
+          <textarea
+            id="agentChatTextarea"
+            class="agent-textarea"
+            placeholder="Ask anything, @ to mention, / for actions"
+            rows="1"
+            onkeydown="handleChatInputKey(event)"
+          ></textarea>
+          <div class="agent-input-footer">
+            <div class="agent-model-pill" onclick="switchTab('models')" title="Click to change active model">
+              <span style="font-size:12px;">⚡</span>
+              <span id="chatActiveModelLabel">Ultra-Light Agent</span>
+              <span style="font-size:10px;">⌃</span>
+            </div>
+            <button id="btnSendAgentMessage" class="btn-send" onclick="sendAgentChatMessage()" title="Send Message">
+              ↑
+            </button>
+          </div>
+        </div>
       </div>
-      <div id="chatResponse" style="display: none;" class="chat-bubble"></div>
     </div>
 
-    <!-- Diagnostics Tab -->
+    <!-- 5. Settings / Model Manager Tab -->
+    <div id="tab-models" class="tab-pane">
+      <!-- Memory Budget Ceiling Configuration Card -->
+      <div class="card">
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; margin-bottom:8px;">
+          <div class="card-title">💾 Process RAM Budget Limit</div>
+          <span class="pill pill-memory" id="currentBudgetPill">Limit: 2.0 GB (2,048 MB)</span>
+        </div>
+        <p style="font-size:12px; color:var(--text-secondary); margin-bottom:12px;">
+          Configure the maximum process memory budget ceiling for model evaluation, embeddings, and FAISS indexing.
+        </p>
+        <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+          <span style="font-size:12px; color:var(--text-secondary); font-weight:600;">Presets:</span>
+          <button class="btn" style="padding:4px 10px; font-size:12px;" onclick="setMemoryBudget(1536)">1.5 GB</button>
+          <button class="btn btn-primary" style="padding:4px 10px; font-size:12px;" onclick="setMemoryBudget(2048)">2.0 GB (Default)</button>
+          <button class="btn" style="padding:4px 10px; font-size:12px;" onclick="setMemoryBudget(3072)">3.0 GB</button>
+          <button class="btn" style="padding:4px 10px; font-size:12px;" onclick="setMemoryBudget(4096)">4.0 GB</button>
+          <button class="btn" style="padding:4px 10px; font-size:12px;" onclick="setMemoryBudget(8192)">8.0 GB</button>
+          
+          <div style="display:flex; align-items:center; gap:6px; margin-left:auto; flex-wrap:wrap;">
+            <input type="number" id="customBudgetInput" class="input-field" style="width:90px; padding:4px 8px; min-height:34px; font-size:12px;" placeholder="2048" value="2048">
+            <span style="font-size:12px; color:var(--text-secondary);">MB</span>
+            <button class="btn" style="padding:4px 10px; font-size:12px;" onclick="setMemoryBudget(document.getElementById('customBudgetInput').value)">Save</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="card" id="activeModelCard">
+        <div class="card-title">Active Model Status</div>
+        <div id="activeModelDetails" style="margin-top:8px; font-size:13px; line-height:1.6;">
+          <em>Scanning active model...</em>
+        </div>
+      </div>
+
+      <!-- Custom Directory Scan & Model Discovery -->
+      <div class="card">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; flex-wrap:wrap; gap:8px;">
+          <div>
+            <div class="card-title">🔍 Discovered Local Models (GGUF, MLX, HuggingFace)</div>
+            <div style="font-size:12px; color:var(--text-secondary); margin-top:2px;">
+              Auto-scans <code>~/.cache/huggingface/hub</code>, <code>~/.cache/lm-studio</code>, <code>~/.ollama</code>, <code>~/.mlx_models</code>, <code>models/</code>, and custom paths.
+            </div>
+          </div>
+          <div style="display:flex; gap:6px;">
+            <button class="btn btn-accent" onclick="openFolderChooser('model_scan')">📂 Browse Folder...</button>
+            <button class="btn btn-primary" onclick="scanModels()">🔍 Scan All</button>
+          </div>
+        </div>
+
+        <div style="display:flex; gap:6px; margin-bottom:14px; flex-wrap:wrap;">
+          <input type="text" id="customModelScanPath" class="input-field" style="flex:1; min-width:200px;" placeholder="/path/to/custom/models (or choose above)" onkeydown="if(event.key==='Enter') scanModels([this.value.trim()])">
+          <button class="btn" onclick="scanModels([document.getElementById('customModelScanPath').value.trim()])">Scan Path</button>
+        </div>
+
+        <div id="modelsListContainer">
+          <div style="padding:16px; text-align:center; color:var(--text-secondary);">Scanning for GGUF and MLX models...</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 6. Diagnostics Tab -->
     <div id="tab-diagnostics" class="tab-pane">
       <div class="btn-row">
         <button class="btn" onclick="loadDiagnostics()">↻ Refresh Diagnostics</button>
       </div>
       <div class="card">
         <div class="card-title">Memory &amp; Resource Breakdown</div>
-        <div id="diagnosticsSummary" style="font-size: 13px; line-height: 1.8; margin-top: 8px;"></div>
+        <div id="diagnosticsSummary" style="font-size:13px; line-height:1.8; margin-top:8px;"></div>
+      </div>
+      <div class="card">
+        <div class="card-title">Recent Audit Log &amp; Mutation History</div>
+        <div id="auditLogSummary" style="font-size:12px; margin-top:8px; max-height:280px; overflow-y:auto;"></div>
       </div>
     </div>
-
   </main>
 
-  <!-- Inspector Modal -->
-  <div id="inspectorModal" class="modal">
+  <!-- Chat Sessions Modal -->
+  <div id="sessionsModal" class="modal">
     <div class="modal-content">
       <div class="modal-header">
-        <h3 id="modalTitle">File Inspection</h3>
-        <button class="modal-close" onclick="closeModal('inspectorModal')">&times;</button>
+        <h3>💬 Chat Conversations</h3>
+        <button class="btn" style="padding:2px 8px; min-height:30px;" onclick="closeModal('sessionsModal')">&times;</button>
       </div>
       <div class="modal-body">
-        <pre class="json-pre" id="modalDetails"></pre>
+        <div style="display:flex; justify-content:space-between; margin-bottom:12px;">
+          <span style="font-size:12px; color:var(--text-secondary);">Persistent multi-turn history</span>
+          <button class="btn btn-primary" style="padding:2px 8px; font-size:11px;" onclick="closeModal('sessionsModal'); startNewChatSession();">
+            ➕ New Chat
+          </button>
+        </div>
+        <div id="sessionsListContainer" style="max-height:300px; overflow-y:auto; border:1px solid var(--border-color); border-radius:var(--radius);">
+          <div style="padding:14px; text-align:center; color:var(--text-secondary);">Loading chats...</div>
+        </div>
       </div>
     </div>
   </div>
 
-  <!-- In-App Confirmation Prompt Modal -->
-  <div id="confirmModal" class="modal">
-    <div class="modal-content" style="max-width: 480px;">
+  <!-- Operations History & Rollback Modal -->
+  <div id="operationsHistoryModal" class="modal">
+    <div class="modal-content" style="max-width: 680px;">
       <div class="modal-header">
-        <h3 id="confirmModalTitle">Confirm Action</h3>
-        <button class="modal-close" onclick="closeModal('confirmModal')">&times;</button>
+        <h3>📜 Filesystem Operations &amp; Audit Log</h3>
+        <button class="btn" style="padding:2px 8px; min-height:30px;" onclick="closeModal('operationsHistoryModal')">&times;</button>
       </div>
       <div class="modal-body">
-        <p id="confirmModalMessage" style="font-size: 14px; line-height: 1.5; color: var(--text-primary); margin-bottom: 20px;"></p>
-        <div style="display: flex; justify-content: flex-end; gap: 12px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+          <span style="font-size:12px; color:var(--text-secondary);">Persistent mutation history and 1-click rollbacks</span>
+          <button class="btn" style="padding:4px 10px; font-size:11px; font-weight:600; background:rgba(248,81,73,0.1); border-color:rgba(248,81,73,0.4); color:#f85149;" onclick="revertLastOperation()">
+            ↩️ Revert Most Recent Operation
+          </button>
+        </div>
+        <div id="operationsListContainer" style="max-height:360px; overflow-y:auto; border:1px solid var(--border-color); border-radius:var(--radius); background:var(--bg-primary);">
+          <div style="padding:14px; text-align:center; color:var(--text-secondary);">Loading operations...</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Folder Chooser Modal -->
+  <div id="folderChooserModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 id="folderChooserTitle">📂 Choose Folder</h3>
+        <button class="btn" style="padding:2px 8px; min-height:30px;" onclick="closeModal('folderChooserModal')">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div style="font-size:11px; color:var(--text-secondary); margin-bottom:4px; font-weight:600;">QUICK LOCATIONS:</div>
+        <div id="chooserShortcutsContainer" style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:10px;"></div>
+        <div class="chooser-path-bar" style="display:flex; gap:6px; margin-bottom:10px;">
+          <input type="text" id="chooserPathInput" class="input-field" style="flex:1;" placeholder="/path/to/folder" onkeydown="if(event.key==='Enter') browseFolderDirectory(this.value.trim())">
+          <button class="btn" onclick="browseFolderDirectory(document.getElementById('chooserPathInput').value.trim())">Go</button>
+        </div>
+        <div class="folder-list-box" id="chooserFolderListBox" style="border:1px solid var(--border-color); border-radius:var(--radius); max-height:240px; overflow-y:auto; background:var(--bg-primary);"></div>
+        <div style="display:flex; justify-content:space-between; margin-top:14px;">
+          <button class="btn" onclick="closeModal('folderChooserModal')">Cancel</button>
+          <button class="btn btn-primary" onclick="confirmFolderSelection()">✓ Select Folder</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- In-App Confirmation Modal -->
+  <div id="confirmModal" class="modal">
+    <div class="modal-content" style="max-width:440px;">
+      <div class="modal-header">
+        <h3 id="confirmModalTitle">Confirm</h3>
+        <button class="btn" style="padding:2px 8px; min-height:30px;" onclick="closeModal('confirmModal')">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p id="confirmModalMessage" style="font-size:13px; margin-bottom:16px;"></p>
+        <div style="display:flex; justify-content:flex-end; gap:8px;">
           <button class="btn" onclick="closeModal('confirmModal')">Cancel</button>
           <button class="btn btn-primary" id="confirmModalBtnAction">Confirm</button>
         </div>
@@ -865,63 +1524,30 @@
     </div>
   </div>
 
-  <!-- Visual Folder Chooser Dialog Modal -->
-  <div id="folderChooserModal" class="modal">
+  <!-- Inspector Modal -->
+  <div id="inspectorModal" class="modal">
     <div class="modal-content">
       <div class="modal-header">
-        <h3 id="folderChooserTitle">📂 Choose Folder</h3>
-        <button class="modal-close" onclick="closeModal('folderChooserModal')">&times;</button>
+        <h3 id="modalTitle">File Inspection</h3>
+        <button class="btn" style="padding:2px 8px; min-height:30px;" onclick="closeModal('inspectorModal')">&times;</button>
       </div>
       <div class="modal-body">
-        
-        <!-- Shortcuts -->
-        <div style="font-size: 11px; color: var(--text-secondary); margin-bottom: 6px; font-weight: 600;">QUICK LOCATIONS:</div>
-        <div class="chooser-shortcuts" id="chooserShortcutsContainer">
-          <!-- Populated by JS -->
-        </div>
-
-        <!-- Editable path bar -->
-        <div style="font-size: 11px; color: var(--text-secondary); margin-bottom: 4px; font-weight: 600;">LOCATION PATH:</div>
-        <div class="chooser-path-bar">
-          <input type="text" id="chooserPathInput" class="chooser-path-input" placeholder="/path/to/folder" onkeydown="if(event.key==='Enter') browseFolderDirectory(this.value.trim())">
-          <button class="btn" onclick="browseFolderDirectory(document.getElementById('chooserPathInput').value.trim())">Go</button>
-        </div>
-
-        <!-- Folder and File List -->
-        <div class="folder-list-box" id="chooserFolderListBox">
-          <div style="padding: 16px; text-align: center; color: var(--text-secondary);">Loading directory contents...</div>
-        </div>
-
-        <!-- Selection Confirmation Footer -->
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--border-color);">
-          <button class="btn" onclick="closeModal('folderChooserModal')">Cancel</button>
-          <button class="btn btn-primary" onclick="confirmFolderSelection()" id="btnConfirmFolderChoice">
-            ✓ Select This Folder
-          </button>
-        </div>
-
+        <pre id="modalDetails" style="font-family:monospace; font-size:12px; background:var(--bg-primary); padding:12px; border-radius:6px; overflow-x:auto;"></pre>
       </div>
     </div>
   </div>
 
-  <!-- Toast Notification Container -->
-  <div class="toast-container" id="toastContainer"></div>
-
   <script>
     let currentExplorerPath = '';
-    let selectedIndexFolder = '';
-    let chooserMode = 'workspace';
     let chooserBrowsingPath = '';
+    let chooserMode = 'workspace';
+    let currentSessionId = localStorage.getItem('mindfs_current_session_id') || '';
 
-    // In-App Toast System
     function showToast(message, type = 'info', durationMs = 4000) {
       const container = document.getElementById('toastContainer');
       const toast = document.createElement('div');
       toast.className = `toast toast-${type}`;
-      
-      const icon = type === 'success' ? '✓' : type === 'error' ? '✕' : type === 'warning' ? '⚠' : 'ℹ';
-      toast.innerHTML = `<span style="font-weight:bold;">${icon}</span><div style="flex:1;">${message}</div>`;
-      
+      toast.innerHTML = message;
       container.appendChild(toast);
       setTimeout(() => {
         toast.style.opacity = '0';
@@ -931,7 +1557,6 @@
       }, durationMs);
     }
 
-    // In-App Confirmation Modal System
     function showConfirmModal(title, message, onConfirm) {
       document.getElementById('confirmModalTitle').innerText = title;
       document.getElementById('confirmModalMessage').innerText = message;
@@ -943,6 +1568,10 @@
       document.getElementById('confirmModal').classList.add('active');
     }
 
+    function closeModal(modalId) {
+      document.getElementById(modalId).classList.remove('active');
+    }
+
     function switchTab(tabId) {
       document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
       document.querySelectorAll('.tab-pane').forEach(pane => pane.classList.remove('active'));
@@ -950,30 +1579,152 @@
       document.getElementById('tab-' + tabId).classList.add('active');
 
       if (tabId === 'explorer') loadFiles(currentExplorerPath);
+      if (tabId === 'models') scanModels();
       if (tabId === 'diagnostics') loadDiagnostics();
+      if (tabId === 'chat') {
+        if (!currentSessionId) startNewChatSession();
+        else loadSessionMessages(currentSessionId);
+      }
     }
 
     async function loadStatus() {
       try {
         const res = await fetch('/api/status');
         const data = await res.json();
-        document.getElementById('wsRootDisplay').innerText = data.workspace_root || '.';
+        const wsRoot = data.workspace_root || '.';
+        const wsName = wsRoot.split('/').filter(Boolean).pop() || wsRoot;
+        const wsEl = document.getElementById('wsRootDisplay');
+        if (wsEl) { wsEl.innerText = wsName; wsEl.title = wsRoot; }
+
         document.getElementById('metricFilesIndexed').innerText = (data.files_indexed || 0);
         document.getElementById('metricFilesTotal').innerText = 'Total scanned: ' + (data.files_total || 0);
         document.getElementById('metricArtifacts').innerText = (data.artifacts_count || 0);
         document.getElementById('metricVectors').innerText = (data.vectors_count || 0);
         document.getElementById('metricPeakRss').innerText = (data.peak_rss_mb ? data.peak_rss_mb.toFixed(1) : '0') + ' MB';
-        document.getElementById('peakRssBadge').innerText = 'Peak RSS: ' + (data.peak_rss_mb ? data.peak_rss_mb.toFixed(1) : '0') + ' MB / <1.7 GB';
+        
+        const budgetMb = data.budget_max_rss_mb || 2048;
+        const budgetGb = (budgetMb / 1024.0).toFixed(1);
+        document.getElementById('peakRssBadge').innerText = 'Peak RSS: ' + (data.peak_rss_mb ? data.peak_rss_mb.toFixed(1) : '0') + ' MB / <' + budgetGb + ' GB';
+        document.getElementById('metricPeakRssSubtext').innerText = 'Budget: < ' + budgetMb.toLocaleString() + ' MB';
+
+        const budgetPill = document.getElementById('currentBudgetPill');
+        if (budgetPill) {
+          budgetPill.innerText = 'Limit: ' + budgetGb + ' GB (' + budgetMb.toLocaleString() + ' MB)';
+        }
+        const budgetInp = document.getElementById('customBudgetInput');
+        if (budgetInp && !budgetInp.matches(':focus')) {
+          budgetInp.value = budgetMb;
+        }
+
+        renderIndexedFolders(data.indexed_folders || []);
+
+        try {
+          const pRes = await fetch('/api/index/progress');
+          const pData = await pRes.json();
+          const tBar = document.getElementById('chatActiveTaskBar');
+          const tDesc = document.getElementById('chatTaskDescription');
+          if (tBar && tDesc) {
+            if (pData.is_indexing) {
+              tBar.style.display = 'flex';
+              tDesc.innerText = '1 task running: ' + (pData.current_file ? 'Indexing ' + pData.current_file : 'Indexing background filesystem vectors');
+            } else {
+              tBar.style.display = 'none';
+            }
+          }
+        } catch (e) {}
       } catch (err) {
         console.error('Failed to load status', err);
       }
     }
 
-    // ---------------- Folder Chooser Logic ----------------
+    async function setMemoryBudget(maxRssMb) {
+      const val = parseFloat(maxRssMb);
+      if (isNaN(val) || val <= 0) {
+        showToast('Please enter a valid positive memory budget in MB', 'error');
+        return;
+      }
+      showToast(`Setting process memory budget to ${val} MB...`, 'info');
+      try {
+        const res = await fetch('/api/config/budget', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ max_rss_mb: val })
+        });
+        const data = await res.json();
+        showToast(`✅ Memory Budget updated to ${data.budget_gb} GB (${data.max_rss_mb} MB)`, 'success');
+        await loadStatus();
+        await scanModels();
+      } catch (err) {
+        showToast('Failed to update memory budget: ' + err, 'error');
+      }
+    }
+
+    function renderIndexedFolders(folders) {
+      const container = document.getElementById('indexedFoldersListContainer');
+      const pillsContainer = document.getElementById('explorerFolderPills');
+
+      if (pillsContainer) {
+        if (!folders || folders.length === 0) {
+          pillsContainer.innerHTML = `<span style="font-size:12px; color:var(--text-secondary);">Default Workspace</span>`;
+        } else {
+          pillsContainer.innerHTML = folders.map(f => {
+            const pathEsc = f.folder_path.replace(/\\/g, '\\\\');
+            return `
+              <button class="btn" style="padding:2px 8px; font-size:11px;" onclick="loadFiles('${pathEsc}')">
+                📁 ${f.folder_name}
+              </button>
+            `;
+          }).join('');
+        }
+      }
+
+      if (!container) return;
+
+      if (!folders || folders.length === 0) {
+        container.innerHTML = `
+          <div style="padding:16px; text-align:center; color:var(--text-secondary); font-size:13px;">
+            No external folders added yet. Click <strong>"➕ Add Folder to Index"</strong> to index any directory.
+          </div>
+        `;
+        return;
+      }
+
+      container.innerHTML = folders.map(f => {
+        const pathEsc = f.folder_path.replace(/\\/g, '\\\\');
+        return `
+          <div class="folder-card-row" style="display:flex; align-items:center; justify-content:space-between; padding:12px 14px; background:var(--bg-tertiary); border:1px solid var(--border-color); border-radius:var(--radius); gap:8px; flex-wrap:wrap;">
+            <div style="display:flex; align-items:center; gap:10px; min-width:0; flex:1;">
+              <span style="font-size:20px; flex-shrink:0;">📁</span>
+              <div style="min-width:0;">
+                <div style="font-weight:600; color:var(--text-primary); font-size:13px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${f.folder_name}</div>
+                <div style="font-size:11px; color:var(--text-secondary); font-family:monospace; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:180px;" title="${f.folder_path}">${f.folder_path}</div>
+              </div>
+            </div>
+            <div class="folder-card-actions" style="display:flex; align-items:center; gap:6px; flex-shrink:0;">
+              <span style="font-size:11px; color:var(--accent); background:rgba(88,166,255,0.1); padding:2px 8px; border-radius:10px; white-space:nowrap;">
+                ${f.files_count || 0} files
+              </span>
+              <button class="btn" onclick="addAndIndexFolder('${pathEsc}')" style="padding:5px 10px; font-size:11px;">
+                ⚡ Re-Index
+              </button>
+              <button class="btn" onclick="removeFolderPrompt('${pathEsc}')" style="padding:5px 10px; font-size:11px; color:var(--danger);">
+                🗑 Remove
+              </button>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    // ---------------- Folder Chooser ----------------
 
     function openFolderChooser(mode = 'workspace') {
       chooserMode = mode;
-      const title = mode === 'workspace' ? '📂 Choose Active Workspace Folder' : '📂 Choose Folder to Index';
+      let title = '📂 Choose Folder to Index';
+      if (mode === 'workspace') title = '📂 Choose Active Workspace Folder';
+      else if (mode === 'add_folder') title = '➕ Select Folder to Add to MindFS Index';
+      else if (mode === 'model_scan') title = '🔍 Select Directory to Scan for Local Models';
+      
       document.getElementById('folderChooserTitle').innerText = title;
       document.getElementById('folderChooserModal').classList.add('active');
       browseFolderDirectory('');
@@ -981,7 +1732,7 @@
 
     async function browseFolderDirectory(targetPath = '') {
       const listContainer = document.getElementById('chooserFolderListBox');
-      listContainer.innerHTML = '<div style="padding: 16px; text-align: center; color: var(--text-secondary);">Loading directory contents...</div>';
+      listContainer.innerHTML = '<div style="padding:14px; text-align:center; color:var(--text-secondary);">Loading...</div>';
 
       try {
         const res = await fetch('/api/browse_directories?path=' + encodeURIComponent(targetPath));
@@ -989,11 +1740,10 @@
         chooserBrowsingPath = data.current_path;
         document.getElementById('chooserPathInput').value = data.current_path;
 
-        // Populate shortcuts
         if (data.shortcuts) {
           const scContainer = document.getElementById('chooserShortcutsContainer');
           scContainer.innerHTML = data.shortcuts.map(sc => `
-            <button class="chooser-shortcut-btn" onclick="browseFolderDirectory('${sc.path.replace(/\\/g, '\\\\')}')">
+            <button class="btn" style="padding:2px 8px; font-size:11px;" onclick="browseFolderDirectory('${sc.path.replace(/\\/g, '\\\\')}')">
               📁 ${sc.label}
             </button>
           `).join('');
@@ -1002,51 +1752,46 @@
         let html = '';
         if (data.parent_path) {
           html += `
-            <div class="folder-item-row" onclick="browseFolderDirectory('${data.parent_path.replace(/\\/g, '\\\\')}')" style="color:var(--accent); font-weight:600;">
-              <span style="display:flex; align-items:center; gap:8px;">📁 .. (Parent Folder)</span>
-              <span style="font-size:11px; color:var(--text-secondary);">Up one level</span>
+            <div style="padding:8px 12px; cursor:pointer; color:var(--accent); font-weight:600;" onclick="browseFolderDirectory('${data.parent_path.replace(/\\/g, '\\\\')}')">
+              📁 .. (Up to Parent)
             </div>
           `;
         }
 
         const dirs = data.directories || [];
-        const files = data.files || [];
-
-        if (dirs.length === 0 && files.length === 0) {
-          html += '<div style="padding: 16px; color: var(--text-secondary); text-align: center;">Empty directory</div>';
+        if (dirs.length === 0) {
+          html += '<div style="padding:12px; color:var(--text-secondary); text-align:center;">No subfolders</div>';
         } else {
-          // Render subdirectories
           dirs.forEach(d => {
             const fullSub = chooserBrowsingPath.endsWith('/') ? `${chooserBrowsingPath}${d}` : `${chooserBrowsingPath}/${d}`;
             html += `
-              <div class="folder-item-row" onclick="browseFolderDirectory('${fullSub.replace(/\\/g, '\\\\')}')">
-                <span style="display:flex; align-items:center; gap:8px; font-weight:500;">📁 ${d}</span>
-                <span style="font-size:11px; color:var(--accent);">Open folder →</span>
-              </div>
-            `;
-          });
-
-          // Render files in folder
-          files.forEach(f => {
-            html += `
-              <div class="file-item-row">
-                <span style="display:flex; align-items:center; gap:8px;">📄 ${f.name}</span>
-                <span>${(f.size || 0).toLocaleString()} bytes</span>
+              <div style="padding:8px 12px; cursor:pointer; border-bottom:1px solid #1c2128; display:flex; justify-content:space-between;" onclick="browseFolderDirectory('${fullSub.replace(/\\/g, '\\\\')}')">
+                <span>📁 ${d}</span>
+                <span style="font-size:11px; color:var(--accent);">Open →</span>
               </div>
             `;
           });
         }
-
         listContainer.innerHTML = html;
       } catch (err) {
-        listContainer.innerHTML = `<div style="padding: 16px; color: var(--danger);">Failed to browse: ${err}</div>`;
+        listContainer.innerHTML = `<div style="padding:14px; color:var(--danger);">Error: ${err}</div>`;
       }
     }
 
     async function confirmFolderSelection() {
       if (!chooserBrowsingPath) return;
 
-      if (chooserMode === 'workspace') {
+      if (chooserMode === 'model_scan') {
+        const scanPath = chooserBrowsingPath;
+        closeModal('folderChooserModal');
+        const inp = document.getElementById('customModelScanPath');
+        if (inp) inp.value = scanPath;
+        scanModels([scanPath]);
+      } else if (chooserMode === 'add_folder') {
+        const folderToAdd = chooserBrowsingPath;
+        closeModal('folderChooserModal');
+        addAndIndexFolder(folderToAdd);
+      } else if (chooserMode === 'workspace') {
         try {
           const res = await fetch('/api/set_workspace', {
             method: 'POST',
@@ -1059,7 +1804,6 @@
           } else {
             closeModal('folderChooserModal');
             currentExplorerPath = '';
-            resetIndexFolderToRoot();
             await loadStatus();
             await loadFiles('');
             showToast('Active Workspace switched to: ' + data.workspace_root, 'success');
@@ -1067,20 +1811,180 @@
         } catch (err) {
           showToast('Failed to switch workspace: ' + err, 'error');
         }
-      } else {
-        selectedIndexFolder = chooserBrowsingPath;
-        document.getElementById('dashSelectedFolderText').innerText = chooserBrowsingPath;
-        closeModal('folderChooserModal');
-        showToast('Selected target folder for indexing: ' + chooserBrowsingPath, 'info');
       }
     }
 
-    function resetIndexFolderToRoot() {
-      selectedIndexFolder = '';
-      document.getElementById('dashSelectedFolderText').innerText = 'Entire Workspace (Root)';
+    // ---------------- Recent Workspaces Dropdown ----------------
+
+    async function toggleWorkspaceDropdown(e) {
+      if (e) e.stopPropagation();
+      const menu = document.getElementById('workspaceDropdownMenu');
+      if (!menu) return;
+      const isOpened = menu.classList.contains('active');
+      if (isOpened) {
+        hideWorkspaceDropdown();
+      } else {
+        menu.classList.add('active');
+        // Show backdrop on mobile
+        if (window.innerWidth <= 600) {
+          let bd = document.getElementById('wsDropdownBackdrop');
+          if (!bd) {
+            bd = document.createElement('div');
+            bd.id = 'wsDropdownBackdrop';
+            bd.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:1999;';
+            bd.addEventListener('click', hideWorkspaceDropdown);
+            document.body.appendChild(bd);
+          }
+          bd.style.display = 'block';
+        }
+        await loadRecentWorkspaces();
+      }
     }
 
-    // ---------------- Indexing Operations & Real-Time Progress ----------------
+    function hideWorkspaceDropdown() {
+      const menu = document.getElementById('workspaceDropdownMenu');
+      if (menu) menu.classList.remove('active');
+      const bd = document.getElementById('wsDropdownBackdrop');
+      if (bd) bd.style.display = 'none';
+    }
+
+    document.addEventListener('click', (e) => {
+      const container = document.querySelector('.workspace-dropdown-container');
+      if (container && !container.contains(e.target)) {
+        hideWorkspaceDropdown();
+      }
+    });
+
+    async function loadRecentWorkspaces() {
+      const listContainer = document.getElementById('recentWorkspacesList');
+      if (!listContainer) return;
+      listContainer.innerHTML = '<div style="padding: 10px; text-align: center; color: var(--text-secondary); font-size: 11px;">Loading workspaces...</div>';
+
+      try {
+        const res = await fetch('/api/workspaces/recent');
+        const data = await res.json();
+        const curWs = data.current_workspace;
+        const recents = data.recent_workspaces || [];
+
+        if (recents.length === 0) {
+          listContainer.innerHTML = `
+            <div style="padding: 12px; text-align: center; color: var(--text-secondary); font-size: 12px;">
+              No other recent workspaces.
+            </div>
+          `;
+          return;
+        }
+
+        listContainer.innerHTML = recents.map(w => {
+          const isActive = w.path === curWs;
+          const timeStr = w.last_used_at ? new Date(w.last_used_at).toLocaleDateString() : '';
+          return `
+            <div class="ws-item ${isActive ? 'active' : ''}" onclick="selectWorkspace('${escapeHtml(w.path)}')">
+              <div style="flex: 1; min-width: 0;">
+                <div style="display: flex; align-items: center; gap: 6px;">
+                  <span>📂</span>
+                  <span class="ws-item-title">${escapeHtml(w.name || w.path)}</span>
+                  ${isActive ? '<span style="font-size: 9px; background: rgba(88,166,255,0.2); color: var(--accent); padding: 1px 4px; border-radius: 4px; font-weight: 700;">ACTIVE</span>' : ''}
+                </div>
+                <div class="ws-item-path" title="${escapeHtml(w.path)}">${escapeHtml(w.path)}</div>
+              </div>
+              <div style="display: flex; align-items: center; gap: 4px;">
+                <span style="font-size: 10px; color: var(--text-secondary);">${timeStr}</span>
+                <button class="btn" style="padding: 1px 5px; font-size: 11px; min-height: 20px; color: var(--text-secondary);" onclick="event.stopPropagation(); removeRecentWorkspace('${escapeHtml(w.path)}')" title="Remove from recent list">&times;</button>
+              </div>
+            </div>
+          `;
+        }).join('');
+      } catch (err) {
+        listContainer.innerHTML = `<div style="padding: 10px; color: var(--danger); font-size: 11px;">Error loading: ${err}</div>`;
+      }
+    }
+
+    async function selectWorkspace(path) {
+      hideWorkspaceDropdown();
+      showToast(`Switching workspace to ${path}...`, 'info');
+      try {
+        const res = await fetch('/api/set_workspace', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ workspace_root: path })
+        });
+        const data = await res.json();
+        if (data.error) {
+          showToast('Failed to switch workspace: ' + data.error, 'error');
+        } else {
+          showToast(`✅ Workspace switched to ${data.workspace_root}`, 'success');
+          currentExplorerPath = '';
+          await loadStatus();
+          await loadFiles('');
+          if (currentSessionId) loadSessionMessages(currentSessionId);
+        }
+      } catch (err) {
+        showToast('Error switching workspace: ' + err, 'error');
+      }
+    }
+
+    async function removeRecentWorkspace(path) {
+      try {
+        await fetch('/api/workspaces/recent/remove', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ path: path })
+        });
+        loadRecentWorkspaces();
+      } catch (err) {}
+    }
+
+    async function addAndIndexFolder(folderPath) {
+      showToast(`Indexing folder: ${folderPath}...`, 'info');
+      startProgressTracking(() => { loadStatus(); });
+
+      try {
+        const res = await fetch('/api/folders/add', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ folder_path: folderPath, recursive: true })
+        });
+        const data = await res.json();
+        if (!res.ok || data.error) {
+          showToast('Folder indexing failed: ' + (data.error || 'Error'), 'error');
+        } else {
+          showToast(`✅ Indexed: ${data.files_indexed ?? 0} files (Skipped: ${data.files_skipped ?? 0})`, 'success');
+          loadStatus();
+        }
+      } catch (err) {
+        showToast('Indexing failed: ' + err, 'error');
+      }
+    }
+
+    function removeFolderPrompt(folderPath) {
+      showConfirmModal(
+        '🗑 Remove Folder from Index',
+        `Are you sure you want to remove '${folderPath}' and its vector embeddings from MindFS?`,
+        () => removeFolder(folderPath)
+      );
+    }
+
+    async function removeFolder(folderPath) {
+      try {
+        const res = await fetch('/api/folders/remove', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ folder_path: folderPath })
+        });
+        const data = await res.json();
+        if (!res.ok || data.error) {
+          showToast('Failed to remove folder: ' + (data.error || 'Error'), 'error');
+        } else {
+          showToast(`✅ Folder removed (${data.deleted_vectors || 0} vectors cleaned)`, 'success');
+          loadStatus();
+        }
+      } catch (err) {
+        showToast('Failed to remove folder: ' + err, 'error');
+      }
+    }
+
+    // ---------------- Indexing Progress ----------------
 
     let progressPollTimer = null;
 
@@ -1090,178 +1994,53 @@
       const percentEl = document.getElementById('progressPercent');
       const countsEl = document.getElementById('progressCounts');
       const fileEl = document.getElementById('progressCurrentFile');
-      const titleEl = document.getElementById('progressTitle');
-      const spinnerEl = document.getElementById('progressSpinner');
 
       card.style.display = 'block';
       fill.style.width = '0%';
       percentEl.innerText = '0%';
-      titleEl.innerText = 'Scanning & Indexing...';
-      spinnerEl.innerText = '⏳';
-      fileEl.innerText = 'Scanning workspace files...';
-      countsEl.innerText = 'Processed: 0 / 0 (Indexed: 0, Skipped: 0)';
 
       if (progressPollTimer) clearInterval(progressPollTimer);
 
       progressPollTimer = setInterval(async () => {
         try {
           const res = await fetch('/api/index/progress');
-          const p = await res.json();
+          const data = await res.json();
 
-          if (p.is_indexing) {
-            fill.style.width = Math.max(p.percent, 5) + '%';
-            percentEl.innerText = p.percent + '%';
-            fileEl.innerText = p.current_file ? `${p.current_file}` : 'Processing...';
-            countsEl.innerText = `Processed: ${p.processed} / ${p.total} (Indexed: ${p.indexed}, Skipped: ${p.skipped})`;
-          } else if (p.status === 'completed') {
+          if (data.is_indexing) {
+            const pct = data.percent || 0;
+            fill.style.width = pct + '%';
+            percentEl.innerText = pct + '%';
+            fileEl.innerText = data.current_file || 'Scanning...';
+            countsEl.innerText = `Processed: ${data.processed} / ${data.total} (Indexed: ${data.indexed}, Skipped: ${data.skipped})`;
+            
+            const tBar = document.getElementById('chatActiveTaskBar');
+            const tDesc = document.getElementById('chatTaskDescription');
+            if (tBar && tDesc) {
+              tBar.style.display = 'flex';
+              tDesc.innerText = '1 task running: ' + (data.current_file ? 'Indexing ' + data.current_file : 'Indexing background filesystem vectors');
+            }
+          } else {
+            clearInterval(progressPollTimer);
+            progressPollTimer = null;
             fill.style.width = '100%';
             percentEl.innerText = '100%';
-            titleEl.innerText = 'Completed!';
-            spinnerEl.innerText = '✅';
-            fileEl.innerText = 'All files processed.';
-            countsEl.innerText = `Total: ${p.total} (Indexed: ${p.indexed}, Skipped: ${p.skipped})`;
-            clearInterval(progressPollTimer);
-            progressPollTimer = null;
+            setTimeout(() => { card.style.display = 'none'; }, 2500);
 
-            setTimeout(() => {
-              card.style.display = 'none';
-            }, 3000);
+            const tBar = document.getElementById('chatActiveTaskBar');
+            if (tBar) tBar.style.display = 'none';
 
-            if (onComplete) onComplete(p.last_result);
-          } else if (p.status === 'failed') {
-            clearInterval(progressPollTimer);
-            progressPollTimer = null;
-            titleEl.innerText = 'Failed';
-            spinnerEl.innerText = '✕';
-            fileEl.innerText = p.error || 'Indexing error occurred.';
-            setTimeout(() => { card.style.display = 'none'; }, 4000);
+            if (onComplete) onComplete(data.last_result);
           }
-        } catch (e) {
-          console.error('Progress poll error', e);
-        }
-      }, 150);
-    }
-
-    async function triggerCustomIndex() {
-      const isRecursive = document.getElementById('dashRecursiveCheckbox').checked;
-      const btn = document.getElementById('btnIndexTarget');
-      btn.innerText = '⏳ Indexing...';
-      btn.disabled = true;
-
-      startProgressTracking((lastResult) => {
-        loadStatus();
-      });
-
-      try {
-        const res = await fetch('/api/index', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ path: selectedIndexFolder, recursive: isRecursive })
-        });
-        const data = await res.json();
-        if (!res.ok || data.error) {
-          showToast('Indexing failed: ' + (data.error || 'Server error'), 'error');
-        } else {
-          const scanned = data.files_scanned ?? 0;
-          const indexed = data.files_indexed ?? 0;
-          const skipped = data.files_skipped ?? 0;
-          const dur = typeof data.duration_seconds === 'number' ? data.duration_seconds.toFixed(2) : '0';
-
-          if (indexed === 0 && scanned > 0) {
-            showToast(`✨ Everything up to date! 0 new files, ${skipped} already indexed & skipped.`, 'info', 5000);
-          } else {
-            showToast(`✅ Indexing Complete! Indexed: ${indexed} new files, Skipped: ${skipped} (${dur}s)`, 'success', 5000);
-          }
-          loadStatus();
-        }
-      } catch (err) {
-        showToast('Indexing failed: ' + err, 'error');
-      } finally {
-        btn.innerText = '⚡ Index Selected Folder';
-        btn.disabled = false;
-      }
-    }
-
-    function confirmRebuildPrompt() {
-      showConfirmModal(
-        '🔄 Full Index Rebuild',
-        'Are you sure you want to clear all existing metadata and vector indexes to rebuild the entire workspace from scratch?',
-        triggerRebuild
-      );
-    }
-
-    async function triggerRebuild() {
-      const card = document.getElementById('indexingProgressCard');
-      card.style.display = 'block';
-      startProgressTracking((lastResult) => {
-        loadStatus();
-      });
-
-      try {
-        const res = await fetch('/api/rebuild', { method: 'POST' });
-        const data = await res.json();
-        if (!res.ok || data.error) {
-          showToast('Rebuild failed: ' + (data.error || 'Server error'), 'error');
-        } else {
-          const indexed = data.files_indexed ?? 0;
-          const artifacts = data.total_artifacts ?? 0;
-          showToast(`✅ Full Rebuild Complete! Indexed: ${indexed} files | Artifacts: ${artifacts}`, 'success');
-          loadStatus();
-        }
-      } catch (err) {
-        showToast('Rebuild failed: ' + err, 'error');
-      }
-    }
-
-    function updateExplorerRecursiveLabel() {
-      const isRec = document.getElementById('explorerRecursiveCheckbox').checked;
-      document.getElementById('explorerRecursiveLabel').innerText = isRec ? 'Recursive' : 'Non-recursive';
-    }
-
-    async function indexCurrentExplorerFolder() {
-      const isRec = document.getElementById('explorerRecursiveCheckbox').checked;
-      const btn = document.getElementById('btnIndexExplorerFolder');
-      btn.innerText = '⏳ Indexing...';
-      btn.disabled = true;
-
-      startProgressTracking(() => {
-        loadStatus();
-      });
-
-      try {
-        const res = await fetch('/api/index', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ path: currentExplorerPath, recursive: isRec })
-        });
-        const data = await res.json();
-        if (!res.ok || data.error) {
-          showToast('Folder indexing failed: ' + (data.error || 'Server error'), 'error');
-        } else {
-          const scanned = data.files_scanned ?? 0;
-          const indexed = data.files_indexed ?? 0;
-          const skipped = data.files_skipped ?? 0;
-          if (indexed === 0 && scanned > 0) {
-            showToast(`✨ Everything up to date! 0 new files, ${skipped} already indexed & skipped.`, 'info', 5000);
-          } else {
-            showToast(`✅ Folder Indexed! Indexed: ${indexed} new files, Skipped: ${skipped}`, 'success', 5000);
-          }
-          loadStatus();
-        }
-      } catch (err) {
-        showToast('Indexing failed: ' + err, 'error');
-      } finally {
-        btn.innerText = `⚡ Index Current Folder (${isRec ? 'Recursive' : 'Non-recursive'})`;
-        btn.disabled = false;
-      }
+        } catch (err) {}
+      }, 300);
     }
 
     // ---------------- Filesystem Explorer ----------------
 
     function updateBreadcrumbs(subpath) {
       const bar = document.getElementById('breadcrumbBar');
-      if (!subpath || subpath === '.') {
-        bar.innerHTML = `<span class="crumb-link" onclick="navigateToFolder('')">📁 Workspace Root</span>`;
+      if (!subpath) {
+        bar.innerHTML = `<span class="crumb-link" onclick="navigateToFolder('')">📁 Root</span>`;
         return;
       }
       const parts = subpath.split('/').filter(Boolean);
@@ -1270,7 +2049,7 @@
       parts.forEach((p) => {
         accumulated = accumulated ? `${accumulated}/${p}` : p;
         const clickPath = accumulated;
-        html += ` <span class="crumb-sep">/</span> <span class="crumb-link" onclick="navigateToFolder('${clickPath}')">${p}</span>`;
+        html += ` <span>/</span> <span class="crumb-link" onclick="navigateToFolder('${clickPath}')">${p}</span>`;
       });
       bar.innerHTML = html;
     }
@@ -1292,18 +2071,18 @@
         let rowsHtml = '';
         if (data.parent_path !== null && data.parent_path !== undefined) {
           rowsHtml += `
-            <tr onclick="navigateToFolder('${data.parent_path}')" class="row-folder">
-              <td>📁 <strong>.. (Up to parent folder)</strong></td>
-              <td><span class="cat-badge cat-DIR">DIRECTORY</span></td>
+            <tr onclick="navigateToFolder('${data.parent_path}')" style="cursor:pointer;">
+              <td>📁 <strong>.. (Up one level)</strong></td>
+              <td><span class="cat-badge cat-DIR">DIR</span></td>
               <td>--</td>
-              <td><button class="btn" style="padding: 4px 8px; font-size: 11px;">Open</button></td>
+              <td><button class="btn" style="padding:2px 8px; font-size:11px;">Open</button></td>
             </tr>
           `;
         }
 
         if (!data.entries || data.entries.length === 0) {
           if (!rowsHtml) {
-            tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; color: var(--text-secondary);">No files or folders in this directory.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; color:var(--text-secondary);">Empty folder.</td></tr>';
             return;
           }
         } else {
@@ -1312,11 +2091,11 @@
             const isDir = e.type === 'directory';
             if (isDir) {
               return `
-                <tr onclick="navigateToFolder('${entrySubpath}')" class="row-folder">
+                <tr onclick="navigateToFolder('${entrySubpath}')" style="cursor:pointer;">
                   <td>📁 <strong>${e.name}/</strong></td>
-                  <td><span class="cat-badge cat-DIR">DIRECTORY</span></td>
+                  <td><span class="cat-badge cat-DIR">DIR</span></td>
                   <td>--</td>
-                  <td><button class="btn btn-accent" style="padding: 4px 8px; font-size: 11px;">Open Folder</button></td>
+                  <td><button class="btn btn-accent" style="padding:2px 8px; font-size:11px;">Open</button></td>
                 </tr>
               `;
             } else {
@@ -1324,16 +2103,15 @@
                 <tr>
                   <td>📄 ${e.name}</td>
                   <td><span class="cat-badge cat-DOCUMENT">FILE</span></td>
-                  <td>${e.size_bytes.toLocaleString()} bytes</td>
+                  <td>${e.size_bytes.toLocaleString()} B</td>
                   <td>
-                    <button class="btn" style="padding: 4px 8px; font-size: 11px;" onclick="inspectFile('${entrySubpath}')">Inspect</button>
+                    <button class="btn" style="padding:2px 8px; font-size:11px;" onclick="inspectFile('${entrySubpath}')">Inspect</button>
                   </td>
                 </tr>
               `;
             }
           }).join('');
         }
-
         tbody.innerHTML = rowsHtml;
       } catch (err) {
         tbody.innerHTML = `<tr><td colspan="4" style="color:var(--danger)">Error: ${err}</td></tr>`;
@@ -1344,7 +2122,7 @@
       try {
         const res = await fetch('/api/inspect?file_path=' + encodeURIComponent(filePath));
         const data = await res.json();
-        document.getElementById('modalTitle').innerText = 'Inspection: ' + filePath;
+        document.getElementById('modalTitle').innerText = 'Inspect: ' + filePath;
         document.getElementById('modalDetails').innerText = JSON.stringify(data, null, 2);
         document.getElementById('inspectorModal').classList.add('active');
       } catch (err) {
@@ -1352,135 +2130,929 @@
       }
     }
 
-    function closeModal(modalId) {
-      document.getElementById(modalId).classList.remove('active');
+    async function indexCurrentExplorerFolder() {
+      const btn = document.getElementById('btnIndexExplorerFolder');
+      btn.innerText = '⏳ Indexing...';
+      btn.disabled = true;
+
+      startProgressTracking(() => { loadStatus(); });
+
+      try {
+        const res = await fetch('/api/index', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ path: currentExplorerPath, recursive: true })
+        });
+        const data = await res.json();
+        showToast(`✅ Indexed: ${data.files_indexed ?? 0} files`, 'success');
+        loadStatus();
+      } catch (err) {
+        showToast('Indexing failed: ' + err, 'error');
+      } finally {
+        btn.innerText = '⚡ Index Folder';
+        btn.disabled = false;
+      }
     }
 
-    // ---------------- Search & AI Chat ----------------
+    // ---------------- Search ----------------
 
     async function executeSearch() {
       const q = document.getElementById('searchInput').value.trim();
-      const pathFilter = document.getElementById('searchPathFilter').value.trim();
-      const typeFilter = document.getElementById('searchTypeFilter').value;
       if (!q) return;
 
       const container = document.getElementById('searchResults');
-      container.innerHTML = '<p style="color:var(--text-secondary);">Searching evidence in FAISS + SQLite...</p>';
+      container.innerHTML = '<p style="color:var(--text-secondary);">Searching semantic vectors...</p>';
 
       try {
         const res = await fetch('/api/search', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ query: q, path_filter: pathFilter, type_filter: typeFilter, limit: 5 })
+          body: JSON.stringify({ query: q, limit: 5 })
         });
         const data = await res.json();
 
         if (!data.evidence || data.evidence.length === 0) {
-          container.innerHTML = `<div class="card" style="color:var(--warning)">No relevant evidence found for query: "${q}".</div>`;
+          container.innerHTML = `<div class="card" style="color:var(--warning)">No evidence found for "${q}".</div>`;
           return;
         }
 
         container.innerHTML = data.evidence.map((ev, idx) => `
-          <div class="evidence-item">
-            <div class="evidence-header">
-              <span class="citation-title">[#${idx + 1}] ${ev.citation}</span>
-              <span class="score-badge">Similarity: ${ev.similarity}</span>
+          <div class="card" style="margin-bottom:10px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; font-size:12px; margin-bottom:6px;">
+              <span style="font-weight:700; color:var(--accent);">[#${idx + 1}] ${ev.citation}</span>
+              <span class="pill pill-memory">Score: ${ev.similarity}</span>
             </div>
-            <div class="evidence-body">${ev.text}</div>
+            <div style="font-size:13px; color:var(--text-primary);">${ev.text}</div>
           </div>
         `).join('');
       } catch (err) {
-        container.innerHTML = `<div class="card" style="color:var(--danger)">Search error: ${err}</div>`;
+        container.innerHTML = `<div class="card" style="color:var(--danger)">Error: ${err}</div>`;
       }
+    }
+
+    // ---------------- Modern Agent Chat & Persistent Sessions ----------------
+
+    function escapeHtml(str) {
+      if (str === null || str === undefined) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
     }
 
     function renderMarkdownToHtml(mdText) {
       if (!mdText) return '';
       let html = mdText;
       
-      // Preserve code blocks before paragraph replacement
       const codeBlocks = [];
       html = html.replace(/```([a-zA-Z]*)\n([\s\S]*?)```/g, (match, lang, code) => {
         const id = `__CODE_BLOCK_${codeBlocks.length}__`;
-        codeBlocks.push(`<pre><code>${code.replace(/</g, '&lt;').replace(/>/g, '&gt;').trim()}</code></pre>`);
+        codeBlocks.push(`<pre style="background:var(--bg-primary); padding:10px; border-radius:6px; font-size:12px; overflow-x:auto; margin:6px 0;"><code>${code.replace(/</g, '&lt;').replace(/>/g, '&gt;').trim()}</code></pre>`);
         return id;
       });
 
-      // Inline code
-      html = html.replace(/`([^`]+)`/g, '<code>$1</code>');
-      // Bold
+      html = html.replace(/`([^`]+)`/g, '<code style="background:var(--bg-primary); padding:2px 5px; border-radius:4px; font-size:12px;">$1</code>');
       html = html.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
-      // Headers
-      html = html.replace(/^#### (.*$)/gim, '<h5 style="color:var(--text-primary); margin-top:10px; margin-bottom:4px;">$1</h5>');
-      html = html.replace(/^### (.*$)/gim, '<h4 style="color:var(--accent); margin-top:12px; margin-bottom:6px;">$1</h4>');
-      html = html.replace(/^## (.*$)/gim, '<h3 style="color:var(--accent); margin-top:14px; margin-bottom:8px;">$1</h3>');
-      
-      // Bullet lists
-      html = html.replace(/^[•\-] (.*$)/gim, '<li style="margin-left: 18px; margin-bottom: 4px;">$1</li>');
-      
-      // Restore code blocks
+      html = html.replace(/^### (.*$)/gim, '<h4 style="color:var(--accent); margin-top:10px; margin-bottom:4px;">$1</h4>');
+      html = html.replace(/^[•\-] (.*$)/gim, '<li style="margin-left:18px; margin-bottom:3px;">$1</li>');
+
       codeBlocks.forEach((block, idx) => {
         html = html.replace(`__CODE_BLOCK_${idx}__`, block);
       });
 
-      // Convert double newlines to paragraph breaks
       html = html.replace(/\n\n/g, '<br><br>');
       return html;
     }
 
-    async function executeAsk() {
-      const q = document.getElementById('chatInput').value.trim();
-      if (!q) return;
+    function toggleAccordion(el) {
+      const header = el.closest('.op-header');
+      const body = header.nextElementSibling;
+      header.classList.toggle('open');
+      body.classList.toggle('open');
+    }
 
-      const box = document.getElementById('chatResponse');
-      box.style.display = 'block';
-      box.innerHTML = '<p style="color:var(--text-secondary);">Thinking &amp; synthesizing evidence-grounded answer...</p>';
-
-      try {
-        const res = await fetch('/api/ask', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ query: q })
-        });
-        const data = await res.json();
-
-        const formattedHtml = renderMarkdownToHtml(data.answer);
-
-        box.innerHTML = `
-          <h4 style="margin-bottom: 12px; color: var(--accent); display:flex; align-items:center; gap:8px;">
-            <span>🤖</span> <span>Grounded Answer</span>
-          </h4>
-          <div style="font-size: 14px; line-height: 1.6;">${formattedHtml}</div>
-          <div style="margin-top: 14px; padding-top: 10px; border-top: 1px solid var(--border-color); font-size: 12px; color: var(--text-secondary); display:flex; justify-content:space-between;">
-            <span>Actions: ${data.total_steps}</span>
-            <span>Reasoning Flow: ${data.actions ? data.actions.map(a => a.thought).join(' → ') : 'Direct answer'}</span>
-          </div>
-        `;
-      } catch (err) {
-        box.innerHTML = `<p style="color:var(--danger)">Error: ${err}</p>`;
+    function handleChatInputKey(e) {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        sendAgentChatMessage();
       }
     }
 
+    async function openSessionsModal() {
+      const modal = document.getElementById('sessionsModal');
+      const container = document.getElementById('sessionsListContainer');
+      modal.classList.add('active');
+      container.innerHTML = '<div style="padding:14px; text-align:center; color:var(--text-secondary);">Loading conversations...</div>';
+
+      try {
+        const res = await fetch('/api/chat/sessions');
+        const data = await res.json();
+        const sessions = data.sessions || [];
+
+        if (sessions.length === 0) {
+          container.innerHTML = '<div style="padding:14px; text-align:center; color:var(--text-secondary);">No previous chat sessions.</div>';
+          return;
+        }
+
+        container.innerHTML = sessions.map(s => `
+          <div class="session-card-row ${s.session_id === currentSessionId ? 'active' : ''}" onclick="selectChatSession('${s.session_id}')">
+            <div style="flex:1; min-width:0;">
+              <div style="font-weight:600; font-size:13px; color:var(--text-primary); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+                ${s.title}
+              </div>
+              <div style="font-size:10px; color:var(--text-secondary);">
+                ${new Date(s.updated_at).toLocaleString()}
+              </div>
+            </div>
+            <button class="btn" style="padding:2px 6px; font-size:11px; color:var(--danger);" onclick="event.stopPropagation(); deleteChatSession('${s.session_id}')">
+              🗑
+            </button>
+          </div>
+        `).join('');
+      } catch (err) {
+        container.innerHTML = `<div style="padding:14px; color:var(--danger);">Error: ${err}</div>`;
+      }
+    }
+
+    async function startNewChatSession() {
+      const newSid = 'sess_' + Math.random().toString(36).substring(2, 10);
+      currentSessionId = newSid;
+      localStorage.setItem('mindfs_current_session_id', newSid);
+      document.getElementById('activeSessionTitleDisplay').innerText = 'New Conversation';
+      
+      try {
+        await fetch('/api/chat/sessions', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ session_id: newSid, title: 'New Conversation' })
+        });
+      } catch (err) {}
+
+      renderSessionMessages([]);
+    }
+
+    async function selectChatSession(sessionId) {
+      currentSessionId = sessionId;
+      localStorage.setItem('mindfs_current_session_id', sessionId);
+      closeModal('sessionsModal');
+      await loadSessionMessages(sessionId);
+    }
+
+    async function deleteChatSession(sessionId) {
+      try {
+        await fetch('/api/chat/sessions/delete', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ session_id: sessionId })
+        });
+        showToast('Session deleted', 'info');
+        if (currentSessionId === sessionId) {
+          startNewChatSession();
+        } else {
+          openSessionsModal();
+        }
+      } catch (err) {
+        showToast('Failed to delete session: ' + err, 'error');
+      }
+    }
+
+    async function loadSessionMessages(sessionId) {
+      const stream = document.getElementById('chatMessageStream');
+      try {
+        const res = await fetch(`/api/chat/sessions/${sessionId}/messages`);
+        const data = await res.json();
+        const msgs = data.messages || [];
+        renderSessionMessages(msgs);
+      } catch (err) {
+        stream.innerHTML = `<div style="color:var(--danger); padding:20px;">Failed to load messages: ${err}</div>`;
+      }
+    }
+
+    function renderSessionMessages(messages) {
+      const stream = document.getElementById('chatMessageStream');
+      if (!messages || messages.length === 0) {
+        stream.innerHTML = `
+          <div style="text-align:center; padding:30px 16px; color:var(--text-secondary);">
+            <div style="font-size:28px; margin-bottom:10px;">🧠</div>
+            <div style="font-weight:600; font-size:15px; color:var(--text-primary);">MindFS Filesystem Intelligence Agent</div>
+            <div style="font-size:12px; margin-top:6px; max-width:380px; margin-left:auto; margin-right:auto;">
+              Ask questions, inspect files, or command actions like <code>move</code>, <code>create</code>, <code>rename</code>, <code>delete</code>, <code>organize files</code>.
+            </div>
+          </div>
+        `;
+        return;
+      }
+
+      stream.innerHTML = messages.map(m => {
+        if (m.role === 'user') {
+          return `
+            <div class="chat-msg chat-msg-user">
+              <div class="chat-user-bubble">${m.content}</div>
+            </div>
+          `;
+        } else {
+          return renderAssistantBubble(m);
+        }
+      }).join('');
+
+      const lastAsst = [...messages].reverse().find(m => m.role === 'assistant' && m.context_usage);
+      if (lastAsst) {
+        updateLiveContextMeter(lastAsst.context_usage);
+      } else {
+        updateLiveContextMeter(null);
+      }
+
+      stream.scrollTop = stream.scrollHeight;
+    }
+
+    function renderAssistantBubble(data) {
+      const formattedHtml = renderMarkdownToHtml(data.content || data.answer);
+      const thoughts = data.thoughts || [];
+      const ops = data.tool_calls || data.operations || [];
+      const explored = data.explored_files || [];
+      const subagents = data.subagents || [];
+      const totalDur = data.total_duration_seconds ? `${data.total_duration_seconds}s` : '0.2s';
+
+      // 1. Thought Accordion (Matching Screenshot: "Thought for 9s >")
+      let thoughtsHtml = '';
+      if (thoughts.length > 0) {
+        thoughtsHtml = `
+          <div class="op-accordion">
+            <div class="op-header" onclick="toggleAccordion(this)">
+              <span>Thought for ${totalDur}</span>
+              <span class="chevron">›</span>
+            </div>
+            <div class="op-body">
+              ${thoughts.map(t => `
+                <div class="op-step-item">
+                  <div style="color:var(--accent); font-weight:600;">🧠 ${t.title || 'Reasoning'} (${t.duration_seconds ? t.duration_seconds + 's' : ''})</div>
+                  <div>${t.detail || ''}</div>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        `;
+      }
+
+      // 2. Commands / Tools Ran Accordion (Matching Screenshot: "Ran 2 commands >")
+      let opsHtml = '';
+      if (ops.length > 0) {
+        opsHtml = `
+          <div class="op-accordion">
+            <div class="op-header" onclick="toggleAccordion(this)">
+              <span>Ran ${ops.length} command${ops.length > 1 ? 's' : ''}</span>
+              <span class="chevron">›</span>
+            </div>
+            <div class="op-body">
+              ${ops.map(o => `
+                <div class="op-step-item">
+                  <div style="color:var(--success);">Ran <code>${o.command_or_tool}</code> ${o.args ? JSON.stringify(o.args) : ''}</div>
+                  <div style="color:var(--text-secondary);">${o.summary || ''}</div>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        `;
+      }
+
+      // 3. Explored Files Accordion (Matching Screenshot: "Explored 2 files >")
+      let exploredHtml = '';
+      if (explored.length > 0) {
+        exploredHtml = `
+          <div class="op-accordion">
+            <div class="op-header" onclick="toggleAccordion(this)">
+              <span>Explored ${explored.length} file${explored.length > 1 ? 's' : ''}</span>
+              <span class="chevron">›</span>
+            </div>
+            <div class="op-body">
+              ${explored.map(f => `
+                <div class="op-step-item" style="color:var(--purple); cursor:pointer;" onclick="inspectFile('${f.replace(/\\/g, '\\\\')}')">
+                  📄 ${f} <span style="font-size:10px; color:var(--text-secondary);">(Click to inspect)</span>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        `;
+      }
+
+      // 4. Subagents Accordion
+      let subagentsHtml = '';
+      if (subagents.length > 0) {
+        subagentsHtml = `
+          <div class="op-accordion">
+            <div class="op-header" onclick="toggleAccordion(this)">
+              <span>Subagents (${subagents.length})</span>
+              <span class="chevron">›</span>
+            </div>
+            <div class="op-body">
+              ${subagents.map(s => `
+                <div class="op-step-item">
+                  <div style="color:var(--accent); font-weight:600;">🤖 ${s.role || s.name}</div>
+                  <div>${s.task}</div>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        `;
+      }
+
+      // 5. Consequential Approval Banner with Git-Style Diff Comparison
+      let approvalHtml = '';
+      const plan = data.plan_data || data.plan;
+      if (plan) {
+        const actions = plan.proposed_actions || [];
+        const addedCount = actions.filter(a => a.tool_name === 'create_file' || a.tool_name === 'create_directory').length;
+        const movedCount = actions.filter(a => a.tool_name === 'move_path' || a.tool_name === 'rename_path').length;
+        const deletedCount = actions.filter(a => a.tool_name === 'delete_file').length;
+        
+        let diffCardsHtml = actions.map(act => {
+          const dp = act.diff_preview || {};
+          const type = dp.type || (act.tool_name.includes('move') ? 'move' : act.tool_name.includes('delete') ? 'delete' : 'create');
+          const target = dp.target || (act.arguments && (act.arguments.path || act.arguments.source_path)) || '';
+          
+          let linesHtml = '';
+          if (dp.diff_text) {
+            linesHtml = dp.diff_text.split('\n').map(l => {
+              if (l.startsWith('-')) return `<div class="diff-line diff-rem">${escapeHtml(l)}</div>`;
+              if (l.startsWith('+')) return `<div class="diff-line diff-add">${escapeHtml(l)}</div>`;
+              return `<div class="diff-line diff-info">${escapeHtml(l)}</div>`;
+            }).join('');
+          } else if (act.tool_name === 'move_path' || act.tool_name === 'rename_path') {
+            linesHtml = `
+              <div class="diff-line diff-rem">- ${escapeHtml(act.arguments.source_path || '')}</div>
+              <div class="diff-line diff-add">+ ${escapeHtml(act.arguments.destination_path || act.arguments.new_name || '')}</div>
+            `;
+          } else if (act.tool_name === 'delete_file') {
+            linesHtml = `
+              <div class="diff-line diff-rem">- ${escapeHtml(act.arguments.path || '')}</div>
+              <div class="diff-line diff-add">+ .mindfs/trash/${escapeHtml(act.arguments.path || '')} (Undo backup)</div>
+            `;
+          } else {
+            linesHtml = `<div class="diff-line diff-add">+ ${escapeHtml(act.description)}</div>`;
+          }
+
+          return `
+            <div class="diff-card">
+              <div class="diff-card-header">
+                <span class="diff-badge ${type}">${type.toUpperCase()}</span>
+                <span style="font-weight:600; color:var(--text-primary); font-size:11px;">${escapeHtml(target)}</span>
+              </div>
+              <div class="diff-viewer">
+                ${linesHtml}
+              </div>
+            </div>
+          `;
+        }).join('');
+
+        const isPending = data.status === 'PENDING_APPROVAL' || plan.status === 'PENDING_APPROVAL';
+        const isRejected = data.status === 'REJECTED' || plan.status === 'REJECTED';
+
+        let actionControlHtml = '';
+        if (isPending) {
+          actionControlHtml = `
+            <div id="approval-actions-${plan.plan_id}" style="display:flex; gap:8px; margin-top:8px;">
+              <button class="btn btn-primary" style="padding:6px 14px; font-size:12px; font-weight:600;" onclick="approvePlan('${plan.plan_id}', true, this)">
+                ✅ Approve &amp; Execute
+              </button>
+              <button class="btn btn-danger" style="padding:6px 14px; font-size:12px;" onclick="approvePlan('${plan.plan_id}', false, this)">
+                ❌ Reject / Cancel
+              </button>
+            </div>
+          `;
+        } else if (isRejected) {
+          actionControlHtml = `
+            <div style="display:flex; align-items:center; gap:6px; margin-top:8px; padding:6px 12px; border-radius:6px; background:rgba(248,81,73,0.12); border:1px solid rgba(248,81,73,0.3); color:#f85149; font-size:12px; font-weight:600;">
+              <span>❌</span>
+              <span>Action Rejected &amp; Cancelled</span>
+            </div>
+          `;
+        } else {
+          actionControlHtml = `
+            <div style="display:flex; align-items:center; gap:6px; margin-top:8px; padding:6px 12px; border-radius:6px; background:rgba(46,160,67,0.12); border:1px solid rgba(46,160,67,0.3); color:#3fb950; font-size:12px; font-weight:600;">
+              <span>✅</span>
+              <span>Action Approved &amp; Executed</span>
+            </div>
+          `;
+        }
+
+        approvalHtml = `
+          <div class="approval-banner" id="approval-box-${plan.plan_id}">
+            <div style="font-weight:700; color:#e3b341; font-size:13px; margin-bottom:6px; display:flex; justify-content:space-between; align-items:center;">
+              <span>⚠️ Consequential Action Plan</span>
+              <span class="pill pill-warn" style="font-size:10px;">Safe Confirmation</span>
+            </div>
+            <div style="font-size:12px; margin-bottom:8px; color:var(--text-secondary);">
+              Review proposed filesystem diff comparison before confirming execution:
+            </div>
+
+            <!-- Interactive File Diff Comparison Section -->
+            <div class="diff-section-container">
+              <div class="diff-summary-bar" onclick="const list = this.nextElementSibling; list.style.display = list.style.display === 'none' ? 'flex' : 'none';">
+                <span>🔍 File Changes Diff (${actions.length} operation${actions.length > 1 ? 's' : ''})</span>
+                <div class="diff-pills">
+                  ${addedCount > 0 ? `<span class="diff-pill added">+${addedCount} Add</span>` : ''}
+                  ${movedCount > 0 ? `<span class="diff-pill moved">⚡${movedCount} Move</span>` : ''}
+                  ${deletedCount > 0 ? `<span class="diff-pill deleted">-${deletedCount} Del</span>` : ''}
+                </div>
+              </div>
+              <div class="diff-list">
+                ${diffCardsHtml}
+              </div>
+            </div>
+
+            ${actionControlHtml}
+          </div>
+        `;
+      }
+
+      // 6. Undo Banner
+      let undoHtml = '';
+      if (data.can_undo && data.undo_log_ids && data.undo_log_ids.length > 0) {
+        const logId = data.undo_log_ids[0];
+        undoHtml = `
+          <div style="margin-top:8px; display:flex; justify-content:flex-end;">
+            <button class="btn" onclick="undoAuditAction('${logId}')" style="font-size:11px; padding:3px 8px;">
+              ↩️ Undo This Action
+            </button>
+          </div>
+        `;
+      }
+
+      const cu = data.context_usage;
+      const modelName = data.model_name || 'FastEmbed Engine';
+      let metaHtml = `
+        <div class="msg-meta-bar">
+          <span>⚡ ${escapeHtml(modelName)}</span>
+          ${cu ? `
+            <span class="meta-dot">•</span>
+            <span class="context-usage-tag ${cu.is_compressed ? 'compressed' : ''}" title="${cu.is_compressed ? `Context auto-compressed by ${cu.compression_ratio_pct}% (${cu.tokens_saved} tokens saved)` : 'Prompt Context Window'}">
+              📊 ${cu.used_tokens.toLocaleString()} / ${cu.total_tokens.toLocaleString()} tokens (${cu.usage_pct}%)
+              ${cu.is_compressed ? `<span class="compressed-pill">⚡ -${cu.compression_ratio_pct}%</span>` : ''}
+            </span>
+          ` : ''}
+          <span class="meta-dot">•</span>
+          <span>⏱️ ${(data.total_duration_seconds || 0).toFixed(2)}s</span>
+        </div>
+      `;
+
+      return `
+        <div class="chat-msg chat-msg-assistant">
+          <div class="chat-assistant-container">
+            ${thoughtsHtml}
+            ${opsHtml}
+            ${exploredHtml}
+            ${subagentsHtml}
+            <div class="answer-content">${formattedHtml}</div>
+            ${approvalHtml}
+            ${undoHtml}
+            ${metaHtml}
+          </div>
+        </div>
+      `;
+    }
+
+    function updateLiveContextMeter(cu) {
+      const textEl = document.getElementById('liveCtxText');
+      const progEl = document.getElementById('liveCtxProgress');
+      if (!textEl || !progEl) return;
+
+      if (!cu) {
+        textEl.textContent = '0 / 2,048 (0%)';
+        progEl.style.width = '0%';
+        progEl.className = 'context-mini-fill';
+        return;
+      }
+
+      const used = cu.used_tokens || 0;
+      const total = cu.total_tokens || 2048;
+      const pct = Math.min(100, Math.max(0, cu.usage_pct || Math.round((used / total) * 100)));
+      textEl.textContent = `${used.toLocaleString()} / ${total.toLocaleString()} (${pct}%)`;
+      progEl.style.width = `${pct}%`;
+
+      if (cu.is_compressed) {
+        progEl.className = 'context-mini-fill compressed';
+        textEl.title = `Auto-compressed by ${cu.compression_ratio_pct}% (${cu.tokens_saved} tokens saved)`;
+      } else if (pct >= 85) {
+        progEl.className = 'context-mini-fill danger';
+      } else if (pct >= 65) {
+        progEl.className = 'context-mini-fill warn';
+      } else {
+        progEl.className = 'context-mini-fill';
+      }
+    }
+
+    async function sendAgentChatMessage() {
+      const textarea = document.getElementById('agentChatTextarea');
+      const btn = document.getElementById('btnSendAgentMessage');
+      const stream = document.getElementById('chatMessageStream');
+      const q = textarea.value.trim();
+      if (!q) return;
+
+      if (!currentSessionId) {
+        currentSessionId = 'sess_' + Math.random().toString(36).substring(2, 10);
+        localStorage.setItem('mindfs_current_session_id', currentSessionId);
+      }
+
+      // Append user bubble immediately
+      const userBubbleHtml = `
+        <div class="chat-msg chat-msg-user">
+          <div class="chat-user-bubble">${q}</div>
+        </div>
+      `;
+      stream.innerHTML += userBubbleHtml;
+      textarea.value = '';
+      stream.scrollTop = stream.scrollHeight;
+
+      // Loading bubble
+      const loadingId = 'loading_' + Date.now();
+      stream.innerHTML += `
+        <div class="chat-msg chat-msg-assistant" id="${loadingId}">
+          <div class="chat-assistant-container">
+            <div class="op-accordion">
+              <div class="op-header open">
+                <span>Thinking &amp; exploring filesystem...</span>
+                <span class="chevron">›</span>
+              </div>
+              <div class="op-body open" style="color:var(--text-secondary);">
+                Working. Reasoning against bounded safety policies...
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+      stream.scrollTop = stream.scrollHeight;
+      btn.disabled = true;
+
+      try {
+        const res = await fetch('/api/chat/message', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ session_id: currentSessionId, query: q })
+        });
+        const data = await res.json();
+        
+        const loadingEl = document.getElementById(loadingId);
+        if (loadingEl) loadingEl.remove();
+
+        stream.innerHTML += renderAssistantBubble(data);
+        if (data.context_usage) {
+          updateLiveContextMeter(data.context_usage);
+        }
+        stream.scrollTop = stream.scrollHeight;
+        loadStatus();
+      } catch (err) {
+        const loadingEl = document.getElementById(loadingId);
+        if (loadingEl) {
+          loadingEl.innerHTML = `<div style="color:var(--danger); padding:10px;">Error: ${err}</div>`;
+        }
+      } finally {
+        btn.disabled = false;
+      }
+    }
+
+    async function approvePlan(planId, approved, btnEl) {
+      // Immediately replace the buttons with the text of the action taken
+      const actionsContainer = document.getElementById(`approval-actions-${planId}`) || (btnEl ? btnEl.parentElement : null);
+      if (actionsContainer) {
+        if (approved) {
+          actionsContainer.outerHTML = `
+            <div style="display:flex; align-items:center; gap:6px; margin-top:8px; padding:6px 12px; border-radius:6px; background:rgba(46,160,67,0.12); border:1px solid rgba(46,160,67,0.3); color:#3fb950; font-size:12px; font-weight:600;">
+              <span>✅</span>
+              <span>Action Approved &amp; Executed</span>
+            </div>
+          `;
+        } else {
+          actionsContainer.outerHTML = `
+            <div style="display:flex; align-items:center; gap:6px; margin-top:8px; padding:6px 12px; border-radius:6px; background:rgba(248,81,73,0.12); border:1px solid rgba(248,81,73,0.3); color:#f85149; font-size:12px; font-weight:600;">
+              <span>❌</span>
+              <span>Action Rejected &amp; Cancelled</span>
+            </div>
+          `;
+        }
+      }
+
+      showToast(approved ? 'Executing approved plan...' : 'Rejecting plan...', 'info');
+      try {
+        const res = await fetch('/api/agent/approve', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ plan_id: planId, approved: approved, session_id: currentSessionId })
+        });
+        const data = await res.json();
+        const stream = document.getElementById('chatMessageStream');
+        stream.innerHTML += renderAssistantBubble(data);
+        if (data.context_usage) {
+          updateLiveContextMeter(data.context_usage);
+        }
+        stream.scrollTop = stream.scrollHeight;
+        loadStatus();
+      } catch (err) {
+        showToast('Execution failed: ' + err, 'error');
+      }
+    }
+
+    async function undoAuditAction(logId) {
+      showToast('Restoring files from audit backup...', 'info');
+      try {
+        const res = await fetch('/api/agent/undo', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ log_id: logId, session_id: currentSessionId })
+        });
+        const data = await res.json();
+        if (!res.ok || data.error) {
+          showToast('Undo failed: ' + (data.error || 'Error'), 'error');
+        } else {
+          showToast(`↩️ Action Undone: Restored '${data.restored_path}'`, 'success');
+          const stream = document.getElementById('chatMessageStream');
+          stream.innerHTML += renderAssistantBubble(data);
+          stream.scrollTop = stream.scrollHeight;
+          loadStatus();
+          loadFiles(currentExplorerPath);
+        }
+      } catch (err) {
+        showToast('Undo failed: ' + err, 'error');
+      }
+    }
+
+    async function openOperationsHistoryModal() {
+      const modal = document.getElementById('operationsHistoryModal');
+      const container = document.getElementById('operationsListContainer');
+      modal.classList.add('active');
+      container.innerHTML = '<div style="padding:16px; text-align:center; color:var(--text-secondary);">Loading operations history...</div>';
+
+      try {
+        const res = await fetch('/api/operations/history');
+        const data = await res.json();
+        const ops = data.operations || [];
+
+        if (ops.length === 0) {
+          container.innerHTML = '<div style="padding:20px; text-align:center; color:var(--text-secondary); font-size:13px;">No recorded filesystem operations yet.</div>';
+          return;
+        }
+
+        container.innerHTML = ops.map(op => {
+          const isUndone = !!op.undone;
+          const actType = op.action_type || 'operation';
+          const typeClass = actType.includes('move') ? 'move' : actType.includes('delete') ? 'delete' : 'create';
+          const src = op.source_path || '';
+          const dst = op.destination_path || '';
+          const pathDisplay = dst ? `${escapeHtml(src)} ➔ ${escapeHtml(dst)}` : escapeHtml(src);
+
+          return `
+            <div style="display:flex; justify-content:space-between; align-items:center; padding:10px 12px; border-bottom:1px solid var(--border-color); font-size:12px; gap:8px;">
+              <div style="flex:1; min-width:0;">
+                <div style="display:flex; align-items:center; gap:6px; margin-bottom:2px;">
+                  <span class="diff-badge ${typeClass}">${actType.toUpperCase()}</span>
+                  <span style="font-weight:600; color:var(--text-primary); font-family:ui-monospace, monospace; font-size:11px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+                    ${pathDisplay}
+                  </span>
+                </div>
+                <div style="font-size:10px; color:var(--text-secondary); display:flex; gap:8px;">
+                  <span>⏱️ ${new Date(op.timestamp).toLocaleString()}</span>
+                  <span style="font-family:ui-monospace, monospace;">ID: ${op.log_id}</span>
+                </div>
+              </div>
+              <div style="display:flex; align-items:center; gap:8px;">
+                ${isUndone ? `
+                  <span style="font-size:10px; font-weight:700; color:#bc8cff; background:rgba(163,113,247,0.15); padding:2px 8px; border-radius:10px; border:1px solid rgba(163,113,247,0.3);">
+                    ROLLED BACK
+                  </span>
+                ` : `
+                  <button class="btn" style="padding:3px 8px; font-size:11px; font-weight:600; background:rgba(248,81,73,0.1); border-color:rgba(248,81,73,0.3); color:#f85149;" onclick="revertOperation('${op.log_id}')">
+                    ↩️ Revert
+                  </button>
+                `}
+              </div>
+            </div>
+          `;
+        }).join('');
+      } catch (err) {
+        container.innerHTML = `<div style="padding:16px; color:var(--danger);">Failed to load history: ${err}</div>`;
+      }
+    }
+
+    async function revertOperation(logId) {
+      showToast('Reverting operation...', 'info');
+      try {
+        const res = await fetch('/api/operations/revert', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ log_id: logId, session_id: currentSessionId })
+        });
+        const data = await res.json();
+        if (!res.ok || data.error) {
+          showToast('Revert failed: ' + (data.error || 'Error'), 'error');
+        } else {
+          showToast(`↩️ Action Reverted: Restored '${data.restored_path}'`, 'success');
+          openOperationsHistoryModal();
+          const stream = document.getElementById('chatMessageStream');
+          stream.innerHTML += renderAssistantBubble(data);
+          stream.scrollTop = stream.scrollHeight;
+          loadStatus();
+          loadFiles(currentExplorerPath);
+        }
+      } catch (err) {
+        showToast('Revert failed: ' + err, 'error');
+      }
+    }
+
+    async function revertLastOperation() {
+      showToast('Reverting most recent operation...', 'info');
+      try {
+        const res = await fetch('/api/operations/revert-last', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ session_id: currentSessionId })
+        });
+        const data = await res.json();
+        if (!res.ok || data.error) {
+          showToast('Revert failed: ' + (data.error || 'No active operations found'), 'error');
+        } else {
+          showToast(`↩️ Reverted '${data.action_type}': Restored '${data.restored_path}'`, 'success');
+          const stream = document.getElementById('chatMessageStream');
+          stream.innerHTML += renderAssistantBubble(data);
+          stream.scrollTop = stream.scrollHeight;
+          loadStatus();
+          loadFiles(currentExplorerPath);
+          const modal = document.getElementById('operationsHistoryModal');
+          if (modal && modal.classList.contains('active')) {
+            openOperationsHistoryModal();
+          }
+        }
+      } catch (err) {
+        showToast('Revert failed: ' + err, 'error');
+      }
+    }
+
+    // ---------------- Local Model Manager ----------------
+
+    async function scanModels(customPaths = null) {
+      const container = document.getElementById('modelsListContainer');
+      const activeDetails = document.getElementById('activeModelDetails');
+      const chatLabel = document.getElementById('chatActiveModelLabel');
+      container.innerHTML = '<div style="padding:16px; text-align:center; color:var(--text-secondary);">Scanning local GGUF, MLX &amp; HuggingFace model paths...</div>';
+
+      try {
+        let res;
+        if (customPaths && customPaths.length > 0 && customPaths[0]) {
+          res = await fetch('/api/models/scan', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ custom_paths: customPaths })
+          });
+        } else {
+          res = await fetch('/api/models');
+        }
+        const data = await res.json();
+
+        // Active model display
+        if (data.active_model) {
+          const act = data.active_model;
+          if (chatLabel) chatLabel.innerText = act.model_name.substring(0, 18);
+          activeDetails.innerHTML = `
+            <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+              <span style="font-weight:700; font-size:14px; color:var(--accent);">🤖 ${act.model_name}</span>
+              <span class="pill pill-privacy">${act.model_format || 'GGUF'}</span>
+            </div>
+            <div style="font-size:12px; color:var(--text-secondary); margin-top:4px;">
+              Path: <code style="font-size:11px; word-break:break-all;">${act.file_path}</code>
+            </div>
+            <div style="font-size:12px; margin-top:4px;">
+              Size: <strong>${act.file_size_mb} MB</strong> | Context: <strong>${act.context_tokens}</strong> tokens | Quant: <strong>${act.quantization}</strong> | Scale: <strong>${act.parameter_scale}</strong>
+            </div>
+            <div style="margin-top:6px;">
+              <strong>Estimated RAM:</strong> <span class="compat-badge compat-${act.compatibility}">${act.estimated_ram_mb} MB (${act.compatibility.toUpperCase()})</span>
+            </div>
+          `;
+        } else {
+          if (chatLabel) chatLabel.innerText = 'Ultra-Light Agent';
+          activeDetails.innerHTML = `<em>No heavy model loaded. Running in ultra-light deterministic mode (&lt; 200 MB RSS).</em>`;
+        }
+
+        const models = data.models || [];
+        if (models.length === 0) {
+          container.innerHTML = `
+            <div style="padding:16px; text-align:center; color:var(--text-secondary); font-size:13px;">
+              No local models found in standard directories.<br>
+              Click <strong>"📂 Browse Folder..."</strong> or type a custom directory path above to scan.
+            </div>
+          `;
+          return;
+        }
+
+        container.innerHTML = models.map(m => {
+          const pathEsc = m.file_path.replace(/\\/g, '\\\\');
+          const fmt = m.model_format || 'GGUF';
+          const fmtColor = fmt.includes('MLX') ? '#bc8cff' : '#58a6ff';
+          const fmtBg = fmt.includes('MLX') ? 'rgba(188,140,255,0.15)' : 'rgba(88,166,255,0.15)';
+
+          return `
+            <div class="model-card ${m.is_active ? 'active-model' : ''}">
+              <div style="flex:1; min-width:220px;">
+                <div style="font-weight:700; color:var(--text-primary); font-size:14px; display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+                  <span>🤖</span> <span>${m.model_name}</span>
+                  <span class="pill" style="background:${fmtBg}; color:${fmtColor}; border:1px solid ${fmtColor}; font-size:10px;">${fmt}</span>
+                  ${m.is_active ? '<span class="pill pill-privacy">ACTIVE</span>' : ''}
+                </div>
+                <div style="font-size:11px; color:var(--text-secondary); margin-top:2px; font-family:monospace; word-break:break-all;">
+                  ${m.file_path}
+                </div>
+                <div style="font-size:12px; color:var(--text-secondary); margin-top:4px;">
+                  Size: <strong>${m.file_size_mb} MB</strong> | Quant: <strong>${m.quantization}</strong> | Scale: <strong>${m.parameter_scale}</strong>
+                </div>
+                <div style="margin-top:6px;">
+                  <span class="compat-badge compat-${m.compatibility}">
+                    Peak RAM: ${m.estimated_ram_mb} MB (${m.compatibility.replace('_', ' ').toUpperCase()})
+                  </span>
+                </div>
+              </div>
+              <div>
+                ${m.is_active ? `
+                  <button class="btn btn-primary" disabled style="opacity:0.7;">✓ Active</button>
+                ` : `
+                  <button class="btn btn-accent" onclick="switchModel('${pathEsc}', 2048)">
+                    ⚡ Set Active
+                  </button>
+                `}
+              </div>
+            </div>
+          `;
+        }).join('');
+      } catch (err) {
+        container.innerHTML = `<div style="padding:16px; color:var(--danger);">Error scanning models: ${err}</div>`;
+      }
+    }
+
+    async function switchModel(modelPath, ctxTokens = 2048) {
+      showToast(`Loading model: ${modelPath.split('/').pop()}...`, 'info');
+      try {
+        const res = await fetch('/api/models/switch', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ model_path: modelPath, context_tokens: ctxTokens })
+        });
+        const data = await res.json();
+        if (!res.ok || data.error) {
+          showToast('Failed to switch model: ' + (data.error || 'Error'), 'error');
+        } else {
+          showToast(`✅ Active Model switched: ${data.model_name} (RAM: ${data.estimated_ram_mb} MB)`, 'success');
+          scanModels();
+          loadStatus();
+        }
+      } catch (err) {
+        showToast('Failed to switch model: ' + err, 'error');
+      }
+    }
+
+    // ---------------- Diagnostics & Audit Log ----------------
+
     async function loadDiagnostics() {
-      const container = document.getElementById('diagnosticsSummary');
-      container.innerHTML = 'Loading memory diagnostics...';
+      const summaryContainer = document.getElementById('diagnosticsSummary');
+      const auditContainer = document.getElementById('auditLogSummary');
+
+      summaryContainer.innerHTML = 'Loading memory diagnostics...';
       try {
         const res = await fetch('/api/diagnostics');
         const d = await res.json();
-        container.innerHTML = `
+        summaryContainer.innerHTML = `
           <p><strong>Current Process RSS:</strong> ${d.current_rss_mb} MB</p>
           <p><strong>Peak Process RSS:</strong> ${d.peak_rss_mb} MB</p>
-          <p><strong>Hard Memory Budget:</strong> ${d.budget_max_rss_mb} MB (&lt; 1.7 GB)</p>
-          <p><strong>Safety Margin Remaining:</strong> ${d.budget_remaining_mb} MB</p>
+          <p><strong>Memory Ceiling:</strong> ${d.budget_max_rss_mb} MB (&lt; 2.0 GB default)</p>
+          <p><strong>Remaining Headroom:</strong> ${d.budget_remaining_mb} MB</p>
           <p><strong>Operations Tracked:</strong> ${d.operations_recorded}</p>
         `;
       } catch (err) {
-        container.innerHTML = `<p style="color:var(--danger)">Error: ${err}</p>`;
+        summaryContainer.innerHTML = `<p style="color:var(--danger)">Error: ${err}</p>`;
       }
+
+      try {
+        const aRes = await fetch('/api/agent/audit');
+        const aData = await aRes.json();
+        const logs = aData.audit_logs || [];
+        if (logs.length === 0) {
+          auditContainer.innerHTML = '<em>No filesystem operations recorded yet.</em>';
+        } else {
+          auditContainer.innerHTML = logs.map(l => `
+            <div style="padding:6px 0; border-bottom:1px solid #21262d; display:flex; justify-content:space-between; align-items:center;">
+              <div>
+                <code>[${l.action_type}]</code> <strong>${l.source_path || ''}</strong> ${l.destination_path ? '→ ' + l.destination_path : ''}
+                <div style="font-size:10px; color:var(--text-secondary);">${l.timestamp} (${l.status})</div>
+              </div>
+              <div>
+                ${!l.undone ? `<button class="btn" style="padding:2px 6px; font-size:10px;" onclick="undoAuditAction('${l.log_id}')">Undo</button>` : '<span style="font-size:10px; color:var(--text-secondary);">Undone</span>'}
+              </div>
+            </div>
+          `).join('');
+        }
+      } catch (err) {}
     }
 
-    // Initial load
+    // Initialize
     loadStatus();
+    setInterval(loadStatus, 4000);
   </script>
 </body>
 </html>

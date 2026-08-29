@@ -84,3 +84,34 @@ def test_sqlite_diagnostics_and_runs(tmp_path):
     summary = store.get_status_summary()
     assert summary["files_total"] == 0
 
+
+def test_sqlite_recent_workspaces(tmp_path):
+    db_path = tmp_path / "metadata.db"
+    store = SQLiteStore(db_path)
+
+    # 1. Record workspaces
+    ws1 = str(tmp_path / "WorkspaceA")
+    ws2 = str(tmp_path / "WorkspaceB")
+    
+    store.record_recent_workspace(ws1, name="WorkspaceA")
+    store.record_recent_workspace(ws2, name="WorkspaceB")
+
+    # 2. List workspaces
+    recent = store.list_recent_workspaces(limit=10)
+    assert len(recent) == 2
+    assert recent[0]["name"] == "WorkspaceB"
+    assert recent[1]["name"] == "WorkspaceA"
+
+    # 3. Update existing workspace (moves to top)
+    store.record_recent_workspace(ws1, name="WorkspaceA Updated")
+    recent2 = store.list_recent_workspaces(limit=10)
+    assert len(recent2) == 2
+    assert recent2[0]["path"] == str(Path(ws1).resolve())
+    assert recent2[0]["name"] == "WorkspaceA Updated"
+
+    # 4. Remove workspace
+    store.remove_recent_workspace(ws2)
+    recent3 = store.list_recent_workspaces(limit=10)
+    assert len(recent3) == 1
+    assert recent3[0]["path"] == str(Path(ws1).resolve())
+

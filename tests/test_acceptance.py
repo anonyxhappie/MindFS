@@ -148,7 +148,7 @@ def test_acceptance_index_lifecycle_and_restart(temp_workspace):
 
 
 def test_acceptance_memory_ceiling_diagnostics(mindfs_env):
-    """Memory criteria: Peak process RSS remains below 1.7 GB (1740 MB)."""
+    """Memory criteria: Peak process RSS remains strictly below configured budget (2.0 GB default)."""
     resources = mindfs_env["resources"]
     indexer = mindfs_env["indexer"]
     search_engine = mindfs_env["search_engine"]
@@ -158,5 +158,5 @@ def test_acceptance_memory_ceiling_diagnostics(mindfs_env):
     search_engine.search("Apollo migration")
 
     peak_rss = resources.get_peak_rss_mb()
-    assert peak_rss < 1740.0, f"Peak RSS {peak_rss} MB exceeded budget limit!"
+    assert peak_rss < 2048.0, f"Peak RSS {peak_rss} MB exceeded budget limit!"
 

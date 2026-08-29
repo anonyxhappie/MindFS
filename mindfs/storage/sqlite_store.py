@@ -31,6 +31,15 @@ class SQLiteStore:
             schema_sql = f.read()
         with self._get_connection() as conn:
             conn.executescript(schema_sql)
+            # Safe migration for new chat_messages columns
+            try:
+                conn.execute("ALTER TABLE chat_messages ADD COLUMN explored_files TEXT")
+            except Exception:
+                pass
+            try:
+                conn.execute("ALTER TABLE chat_messages ADD COLUMN subagents TEXT")
+            except Exception:
+                pass
 
     # ---------------- File Operations ----------------
 
@@ -434,6 +443,7 @@ class SQLiteStore:
             conn.execute("DELETE FROM errors")
             conn.execute("DELETE FROM index_runs")
             conn.execute("DELETE FROM diagnostics")
+            conn.execute("DELETE FROM indexed_folders")
 
     def get_status_summary(self) -> Dict[str, Any]:
         """Returns comprehensive status dictionary."""
@@ -468,4 +478,347 @@ class SQLiteStore:
                 "last_run": dict(last_run) if last_run else None,
                 "recent_errors": [dict(e) for e in recent_errors],
             }
+
+    # ---------------- Indexed Folders Operations ----------------
+
+    def add_indexed_folder(self, folder_path: str, folder_name: Optional[str] = None) -> None:
+        """Records a folder as an active indexed root."""
+        p = str(Path(folder_path).expanduser().resolve())
+        name = folder_name or Path(p).name or p
+        now = datetime.now(timezone.utc).isoformat()
+        with self._get_connection() as conn:
+            conn.execute(
+                """
+                INSERT INTO indexed_folders (folder_path, folder_name, added_at, last_indexed_at, files_count)
+                VALUES (?, ?, ?, ?, 0)
+                ON CONFLICT(folder_path) DO UPDATE SET
+                    folder_name = excluded.folder_name
+                """,
+                (p, name, now, now),
+            )
+
+    def list_indexed_folders(self) -> List[Dict[str, Any]]:
+        """Lists all registered indexed folders with live counts."""
+        with self._get_connection() as conn:
+            rows = conn.execute("SELECT * FROM indexed_folders ORDER BY added_at ASC").fetchall()
+            folders = []
+            for r in rows:
+                folder_p = r["folder_path"]
+                # Count files under this folder path
+                cnt = conn.execute("SELECT COUNT(*) FROM files WHERE path LIKE ?", (f"{folder_p}%",)).fetchone()[0]
+                folders.append({
+                    "folder_path": folder_p,
+                    "folder_name": r["folder_name"],
+                    "added_at": r["added_at"],
+                    "last_indexed_at": r["last_indexed_at"],
+                    "files_count": cnt,
+                })
+            return folders
+
+    def update_indexed_folder(self, folder_path: str, files_count: int) -> None:
+        """Updates last indexed time and file count for an indexed folder."""
+        p = str(Path(folder_path).expanduser().resolve())
+        now = datetime.now(timezone.utc).isoformat()
+        with self._get_connection() as conn:
+            conn.execute(
+                """
+                UPDATE indexed_folders
+                SET last_indexed_at = ?, files_count = ?
+                WHERE folder_path = ?
+                """,
+                (now, files_count, p),
+            )
+
+    def remove_indexed_folder(self, folder_path: str) -> List[int]:
+        """
+        Removes an indexed folder and deletes all its files, artifacts, and chunks.
+        Returns deleted vector_ids to prune from FAISS.
+        """
+        p = str(Path(folder_path).expanduser().resolve())
+        deleted_vids: List[int] = []
+        with self._get_connection() as conn:
+            # Find all files belonging to this folder
+            rows = conn.execute("SELECT path FROM files WHERE path LIKE ?", (f"{p}%",)).fetchall()
+            for r in rows:
+                file_path = r["path"]
+                vids = conn.execute(
+                    "SELECT vector_id FROM chunks WHERE file_id = (SELECT file_id FROM files WHERE path = ?) AND vector_id IS NOT NULL",
+                    (file_path,)
+                ).fetchall()
+                deleted_vids.extend([v[0] for v in vids])
+                conn.execute("DELETE FROM files WHERE path = ?", (file_path,))
+
+            conn.execute("DELETE FROM indexed_folders WHERE folder_path = ?", (p,))
+            return deleted_vids
+
+    # ---------------- Audit Logs & Rollback Operations ----------------
+
+    def record_audit_log(
+        self,
+        log_id: str,
+        plan_id: Optional[str],
+        action_type: str,
+        source_path: Optional[str] = None,
+        destination_path: Optional[str] = None,
+        backup_path: Optional[str] = None,
+        details: Optional[Dict[str, Any]] = None,
+        status: str = "COMPLETED",
+    ) -> None:
+        """Records a mutating filesystem operation for audit and rollback."""
+        now = datetime.now(timezone.utc).isoformat()
+        details_json = json.dumps(details or {})
+        with self._get_connection() as conn:
+            conn.execute(
+                """
+                INSERT INTO audit_logs (
+                    log_id, plan_id, action_type, source_path, destination_path,
+                    backup_path, details, timestamp, status, undone
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
+                """,
+                (log_id, plan_id, action_type, source_path, destination_path, backup_path, details_json, now, status),
+            )
+
+    def get_audit_log(self, log_id: str) -> Optional[Dict[str, Any]]:
+        """Retrieves a single audit log entry by ID."""
+        with self._get_connection() as conn:
+            row = conn.execute("SELECT * FROM audit_logs WHERE log_id = ?", (log_id,)).fetchone()
+            if not row:
+                return None
+            res = dict(row)
+            if res.get("details"):
+                try:
+                    res["details"] = json.loads(res["details"])
+                except Exception:
+                    pass
+            return res
+
+    def list_audit_logs(self, limit: int = 30) -> List[Dict[str, Any]]:
+        """Lists recent audit log entries ordered newest first."""
+        with self._get_connection() as conn:
+            rows = conn.execute("SELECT * FROM audit_logs ORDER BY timestamp DESC LIMIT ?", (limit,)).fetchall()
+            logs = []
+            for r in rows:
+                item = dict(r)
+                if item.get("details"):
+                    try:
+                        item["details"] = json.loads(item["details"])
+                    except Exception:
+                        pass
+                logs.append(item)
+            return logs
+
+    def mark_audit_undone(self, log_id: str) -> None:
+        """Marks an audit entry as undone / rolled back."""
+        with self._get_connection() as conn:
+            conn.execute("UPDATE audit_logs SET undone = 1, status = 'ROLLED_BACK' WHERE log_id = ?", (log_id,))
+
+    # ---------------- Chat Session & Message Persistence ----------------
+
+    def create_chat_session(self, session_id: str, title: str = "New Chat", model_name: Optional[str] = None) -> Dict[str, Any]:
+        """Creates a new persistent chat session."""
+        now = datetime.now(timezone.utc).isoformat()
+        with self._get_connection() as conn:
+            conn.execute(
+                """
+                INSERT INTO chat_sessions (session_id, title, model_name, created_at, updated_at)
+                VALUES (?, ?, ?, ?, ?)
+                ON CONFLICT(session_id) DO UPDATE SET updated_at = excluded.updated_at
+                """,
+                (session_id, title, model_name, now, now),
+            )
+        return {
+            "session_id": session_id,
+            "title": title,
+            "model_name": model_name,
+            "created_at": now,
+            "updated_at": now,
+        }
+
+    def list_chat_sessions(self, limit: int = 50) -> List[Dict[str, Any]]:
+        """Lists all chat sessions ordered by most recently active."""
+        with self._get_connection() as conn:
+            rows = conn.execute(
+                "SELECT * FROM chat_sessions ORDER BY updated_at DESC LIMIT ?", (limit,)
+            ).fetchall()
+            return [dict(r) for r in rows]
+
+    def get_chat_session(self, session_id: str) -> Optional[Dict[str, Any]]:
+        """Retrieves a single chat session metadata."""
+        with self._get_connection() as conn:
+            row = conn.execute("SELECT * FROM chat_sessions WHERE session_id = ?", (session_id,)).fetchone()
+            return dict(row) if row else None
+
+    def update_chat_session(self, session_id: str, title: Optional[str] = None) -> None:
+        """Updates chat session title and timestamp."""
+        now = datetime.now(timezone.utc).isoformat()
+        with self._get_connection() as conn:
+            if title:
+                conn.execute(
+                    "UPDATE chat_sessions SET title = ?, updated_at = ? WHERE session_id = ?",
+                    (title, now, session_id),
+                )
+            else:
+                conn.execute(
+                    "UPDATE chat_sessions SET updated_at = ? WHERE session_id = ?",
+                    (now, session_id),
+                )
+
+    def delete_chat_session(self, session_id: str) -> None:
+        """Deletes a chat session and all its messages."""
+        with self._get_connection() as conn:
+            conn.execute("DELETE FROM chat_messages WHERE session_id = ?", (session_id,))
+            conn.execute("DELETE FROM chat_sessions WHERE session_id = ?", (session_id,))
+
+    def add_chat_message(
+        self,
+        message_id: str,
+        session_id: str,
+        role: str,
+        content: str,
+        thoughts: Optional[List[Any]] = None,
+        tool_calls: Optional[List[Any]] = None,
+        explored_files: Optional[List[str]] = None,
+        subagents: Optional[List[Any]] = None,
+        plan_id: Optional[str] = None,
+        plan_data: Optional[Dict[str, Any]] = None,
+        status: str = "COMPLETED",
+        can_undo: bool = False,
+        undo_log_ids: Optional[List[str]] = None,
+    ) -> Dict[str, Any]:
+        """Appends a new message (with optional thoughts, tool calls, and plan) to session."""
+        now = datetime.now(timezone.utc).isoformat()
+        thoughts_json = json.dumps(thoughts or [])
+        tools_json = json.dumps(tool_calls or [])
+        explored_json = json.dumps(explored_files or [])
+        subagents_json = json.dumps(subagents or [])
+        plan_json = json.dumps(plan_data) if plan_data else None
+        undo_json = json.dumps(undo_log_ids or [])
+
+        with self._get_connection() as conn:
+            conn.execute(
+                """
+                INSERT INTO chat_messages (
+                    message_id, session_id, role, content, thoughts, tool_calls,
+                    explored_files, subagents, plan_id, plan_data, status, can_undo, undo_log_ids, created_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    message_id,
+                    session_id,
+                    role,
+                    content,
+                    thoughts_json,
+                    tools_json,
+                    explored_json,
+                    subagents_json,
+                    plan_id,
+                    plan_json,
+                    status,
+                    1 if can_undo else 0,
+                    undo_json,
+                    now,
+                ),
+            )
+            conn.execute("UPDATE chat_sessions SET updated_at = ? WHERE session_id = ?", (now, session_id))
+
+        return {
+            "message_id": message_id,
+            "session_id": session_id,
+            "role": role,
+            "content": content,
+            "thoughts": thoughts or [],
+            "tool_calls": tool_calls or [],
+            "explored_files": explored_files or [],
+            "subagents": subagents or [],
+            "plan_id": plan_id,
+            "plan_data": plan_data,
+            "status": status,
+            "can_undo": can_undo,
+            "undo_log_ids": undo_log_ids or [],
+            "created_at": now,
+        }
+
+    def get_session_messages(self, session_id: str) -> List[Dict[str, Any]]:
+        """Retrieves chronological messages for a conversation session."""
+        with self._get_connection() as conn:
+            rows = conn.execute(
+                "SELECT * FROM chat_messages WHERE session_id = ? ORDER BY created_at ASC",
+                (session_id,),
+            ).fetchall()
+            messages = []
+            for r in rows:
+                m = dict(r)
+                m["thoughts"] = json.loads(m["thoughts"]) if m.get("thoughts") else []
+                m["tool_calls"] = json.loads(m["tool_calls"]) if m.get("tool_calls") else []
+                m["explored_files"] = json.loads(m["explored_files"]) if m.get("explored_files") else []
+                m["subagents"] = json.loads(m["subagents"]) if m.get("subagents") else []
+                m["plan_data"] = json.loads(m["plan_data"]) if m.get("plan_data") else None
+                m["undo_log_ids"] = json.loads(m["undo_log_ids"]) if m.get("undo_log_ids") else []
+                m["can_undo"] = bool(m.get("can_undo", 0))
+                messages.append(m)
+            return messages
+
+    def update_plan_status(self, plan_id: str, new_status: str) -> None:
+        """Updates the status of a message containing a plan."""
+        with self._get_connection() as conn:
+            conn.execute("UPDATE chat_messages SET status = ? WHERE plan_id = ?", (new_status, plan_id))
+
+    def update_chat_message_plan(
+        self,
+        message_id: str,
+        status: str,
+        plan_data: Optional[Dict[str, Any]] = None,
+        can_undo: bool = False,
+        undo_log_ids: Optional[List[str]] = None,
+    ) -> None:
+        """Updates plan state on a chat message post-approval/rejection/undo."""
+        with self._get_connection() as conn:
+            plan_json = json.dumps(plan_data) if plan_data else None
+            undo_json = json.dumps(undo_log_ids or [])
+            conn.execute(
+                """
+                UPDATE chat_messages
+                SET status = ?, plan_data = COALESCE(?, plan_data), can_undo = ?, undo_log_ids = ?
+                WHERE message_id = ?
+                """,
+                (status, plan_json, 1 if can_undo else 0, undo_json, message_id),
+            )
+
+    # ---------------- Recent Workspaces Persistence ----------------
+
+    def record_recent_workspace(self, path: str, name: Optional[str] = None) -> Dict[str, Any]:
+        """Records or updates a workspace path in the recent workspaces history."""
+        resolved = str(Path(path).expanduser().resolve())
+        folder_name = name or Path(resolved).name or resolved
+        now = datetime.now(timezone.utc).isoformat()
+        with self._get_connection() as conn:
+            conn.execute(
+                """
+                INSERT INTO recent_workspaces (path, name, last_used_at)
+                VALUES (?, ?, ?)
+                ON CONFLICT(path) DO UPDATE SET
+                    name = excluded.name,
+                    last_used_at = excluded.last_used_at
+                """,
+                (resolved, folder_name, now),
+            )
+        return {"path": resolved, "name": folder_name, "last_used_at": now}
+
+    def list_recent_workspaces(self, limit: int = 15) -> List[Dict[str, Any]]:
+        """Lists recent workspaces ordered newest first."""
+        with self._get_connection() as conn:
+            rows = conn.execute(
+                "SELECT * FROM recent_workspaces ORDER BY last_used_at DESC LIMIT ?",
+                (limit,),
+            ).fetchall()
+            return [dict(r) for r in rows]
+
+    def remove_recent_workspace(self, path: str) -> None:
+        """Removes a workspace from the recent history."""
+        resolved = str(Path(path).expanduser().resolve())
+        with self._get_connection() as conn:
+            conn.execute("DELETE FROM recent_workspaces WHERE path = ?", (resolved,))
+
+
+
 

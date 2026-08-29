@@ -106,7 +106,7 @@ def init_cmd(ctx, workspace):
                 "max_file_size_mb": 5.0,
             },
             "resources": {
-                "max_rss_mb": 1740.0,
+                "max_rss_mb": 2048.0,
             },
         }
         with open(cfg_file, "w", encoding="utf-8") as f:
@@ -281,7 +281,7 @@ def diagnostics_cmd(ctx):
 
 
 @cli.command("ui")
-@click.option("--host", default="127.0.0.1", help="Host interface to bind")
+@click.option("--host", default="0.0.0.0", help="Host interface to bind")
 @click.option("--port", default=8765, type=int, help="Port to listen on")
 @click.pass_context
 def ui_cmd(ctx, host, port):

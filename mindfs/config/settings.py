@@ -13,6 +13,7 @@ class LLMConfig(BaseModel):
     max_output_tokens: int = 256
     temperature: float = 0.1
     backend: str = "auto"  # "llama_cpp", "mock", "auto"
+    compression_threshold_pct: float = 0.70  # Compress context when > 70% used
 
 
 class EmbeddingConfig(BaseModel):
@@ -38,7 +39,7 @@ class AgentConfig(BaseModel):
 
 
 class ResourceConfig(BaseModel):
-    max_rss_mb: float = 1740.0  # 1.7 GB hard ceiling
+    max_rss_mb: float = 2048.0  # 2.0 GB default budget
 
 
 class MediaConfig(BaseModel):
