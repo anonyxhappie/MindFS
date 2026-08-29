@@ -1,0 +1,1486 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MindFS — Local Filesystem Intelligence Engine</title>
+  <style>
+    :root {
+      --bg-primary: #0d1117;
+      --bg-secondary: #161b22;
+      --bg-tertiary: #21262d;
+      --border-color: #30363d;
+      --text-primary: #f0f6fc;
+      --text-secondary: #8b949e;
+      --accent: #58a6ff;
+      --accent-hover: #79c0ff;
+      --accent-gradient: linear-gradient(135deg, #238636 0%, #2ea043 100%);
+      --danger: #f85149;
+      --success: #3fb950;
+      --warning: #d29922;
+      --radius: 8px;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background-color: var(--bg-primary);
+      color: var(--text-primary);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Top Navigation Bar */
+    header {
+      background: var(--bg-secondary);
+      border-bottom: 1px solid var(--border-color);
+      padding: 12px 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .logo-icon {
+      width: 32px;
+      height: 32px;
+      background: linear-gradient(135deg, #1f6feb, #238636);
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: bold;
+      font-size: 18px;
+    }
+
+    .brand-title {
+      font-size: 18px;
+      font-weight: 600;
+      letter-spacing: -0.5px;
+    }
+
+    .workspace-badge {
+      font-size: 12px;
+      background: var(--bg-tertiary);
+      border: 1px solid var(--border-color);
+      padding: 6px 14px;
+      border-radius: 20px;
+      color: var(--text-secondary);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      transition: all 0.2s;
+    }
+    .workspace-badge:hover {
+      border-color: var(--accent);
+      color: var(--text-primary);
+      background: #1c2128;
+    }
+
+    .header-stats {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .pill {
+      font-size: 12px;
+      padding: 4px 10px;
+      border-radius: 12px;
+      font-weight: 500;
+    }
+    .pill-privacy { background: #23863622; color: #3fb950; border: 1px solid #238636; }
+    .pill-memory { background: #1f6feb22; color: #58a6ff; border: 1px solid #1f6feb; }
+
+    /* Tab Bar */
+    nav.tabs {
+      background: var(--bg-secondary);
+      border-bottom: 1px solid var(--border-color);
+      padding: 0 24px;
+      display: flex;
+      gap: 8px;
+    }
+
+    .tab-btn {
+      background: none;
+      border: none;
+      color: var(--text-secondary);
+      font-size: 14px;
+      font-weight: 500;
+      padding: 12px 16px;
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      transition: all 0.2s;
+    }
+    .tab-btn:hover { color: var(--text-primary); }
+    .tab-btn.active {
+      color: var(--accent);
+      border-bottom-color: var(--accent);
+    }
+
+    /* Main Container */
+    main {
+      flex: 1;
+      padding: 24px;
+      max-width: 1300px;
+      width: 100%;
+      margin: 0 auto;
+    }
+
+    .tab-pane { display: none; }
+    .tab-pane.active { display: block; }
+
+    /* Dashboard Metrics Cards */
+    .metrics-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+
+    .card {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius);
+      padding: 18px;
+      margin-bottom: 16px;
+    }
+
+    .card-title {
+      font-size: 13px;
+      color: var(--text-secondary);
+      margin-bottom: 8px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      font-weight: 600;
+    }
+
+    .card-value {
+      font-size: 28px;
+      font-weight: 700;
+      color: var(--text-primary);
+    }
+
+    .card-subtext {
+      font-size: 12px;
+      color: var(--text-secondary);
+      margin-top: 4px;
+    }
+
+    /* Action Buttons & Forms */
+    .btn-row {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+
+    .btn {
+      background: var(--bg-tertiary);
+      border: 1px solid var(--border-color);
+      color: var(--text-primary);
+      padding: 8px 16px;
+      border-radius: var(--radius);
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      transition: all 0.2s;
+    }
+    .btn:hover { background: #30363d; border-color: #8b949e; }
+    .btn-primary { background: #238636; border-color: #2ea043; }
+    .btn-primary:hover { background: #2ea043; }
+    .btn-accent { background: #1f6feb; border-color: #388bfd; }
+    .btn-accent:hover { background: #388bfd; }
+    .btn-danger { background: #da3633; border-color: #f85149; }
+    .btn-danger:hover { background: #f85149; }
+
+    .checkbox-label {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 13px;
+      color: var(--text-secondary);
+      cursor: pointer;
+      user-select: none;
+    }
+    .checkbox-label input[type="checkbox"] {
+      accent-color: #238636;
+      width: 16px;
+      height: 16px;
+      cursor: pointer;
+    }
+
+    /* Selected Folder Tag */
+    .folder-tag {
+      background: var(--bg-tertiary);
+      border: 1px solid var(--border-color);
+      padding: 8px 12px;
+      border-radius: var(--radius);
+      font-size: 13px;
+      color: var(--accent);
+      font-weight: 500;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      max-width: 450px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    /* Breadcrumbs */
+    .breadcrumb-bar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      background: var(--bg-tertiary);
+      padding: 8px 14px;
+      border-radius: var(--radius);
+      margin-bottom: 16px;
+      border: 1px solid var(--border-color);
+      flex-wrap: wrap;
+    }
+    .crumb-link {
+      color: var(--accent);
+      cursor: pointer;
+      text-decoration: none;
+    }
+    .crumb-link:hover { text-decoration: underline; }
+    .crumb-sep { color: var(--text-secondary); }
+
+    /* Explorer Table */
+    .explorer-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+
+    .explorer-table th {
+      text-align: left;
+      padding: 10px 14px;
+      background: var(--bg-tertiary);
+      color: var(--text-secondary);
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    .explorer-table td {
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    .explorer-table tr:hover td {
+      background: #1c2128;
+    }
+
+    .row-folder {
+      cursor: pointer;
+      color: var(--accent);
+      font-weight: 600;
+    }
+
+    .cat-badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 10px;
+      font-size: 11px;
+      font-weight: 600;
+    }
+    .cat-DIR { background: #1f6feb33; color: #58a6ff; }
+    .cat-DOCUMENT { background: #1f6feb33; color: #58a6ff; }
+    .cat-STRUCTURED { background: #23863633; color: #3fb950; }
+    .cat-IMAGE { background: #8957e533; color: #bc8cff; }
+    .cat-AUDIO { background: #d2992233; color: #d29922; }
+    .cat-VIDEO { background: #db61a233; color: #f778ba; }
+    .cat-ARCHIVE { background: #f0883e33; color: #f0883e; }
+    .cat-BINARY { background: #f8514933; color: #f85149; }
+    /* Progress Bar */
+    .progress-card {
+      display: none;
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-color);
+      border-left: 4px solid var(--accent);
+      border-radius: var(--radius);
+      padding: 16px 20px;
+      margin-bottom: 20px;
+    }
+    .progress-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+      font-size: 13px;
+    }
+    .progress-bar-track {
+      width: 100%;
+      height: 10px;
+      background: var(--bg-primary);
+      border-radius: 5px;
+      overflow: hidden;
+      border: 1px solid var(--border-color);
+      margin-bottom: 10px;
+    }
+    .progress-bar-fill {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, #1f6feb 0%, #2ea043 100%);
+      transition: width 0.2s ease-in-out;
+    }
+    .progress-details {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 12px;
+      color: var(--text-secondary);
+      font-family: monospace;
+    }
+    .progress-current-file {
+      color: var(--accent);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 60%;
+    }
+
+    /* Search & Query Boxes */
+    .search-bar-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+
+    .input-field {
+      flex: 1;
+      min-width: 250px;
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-color);
+      color: var(--text-primary);
+      padding: 10px 14px;
+      border-radius: var(--radius);
+      font-size: 14px;
+      outline: none;
+    }
+    .input-field:focus { border-color: var(--accent); }
+
+    .select-field {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-color);
+      color: var(--text-primary);
+      padding: 10px 14px;
+      border-radius: var(--radius);
+      font-size: 14px;
+      outline: none;
+    }
+
+    /* Evidence Cards */
+    .evidence-item {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius);
+      padding: 16px;
+      margin-bottom: 14px;
+    }
+
+    .evidence-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+
+    .citation-title {
+      font-weight: 600;
+      color: var(--accent);
+      font-size: 14px;
+    }
+
+    .score-badge {
+      font-size: 12px;
+      background: #1f6feb22;
+      color: #58a6ff;
+      padding: 3px 8px;
+      border-radius: 8px;
+      font-weight: 600;
+    }
+
+    .evidence-body {
+      font-family: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", Menlo, monospace;
+      font-size: 12px;
+      line-height: 1.5;
+      color: #c9d1d9;
+      background: var(--bg-primary);
+      padding: 12px;
+      border-radius: 4px;
+      white-space: pre-wrap;
+      max-height: 250px;
+      overflow-y: auto;
+      border: 1px solid var(--border-color);
+    }
+
+    /* Modal / Dialog */
+    .modal {
+      display: none;
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.75);
+      backdrop-filter: blur(4px);
+      z-index: 1000;
+      align-items: center;
+      justify-content: center;
+    }
+    .modal.active { display: flex; }
+
+    .modal-content {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius);
+      width: 92%;
+      max-width: 720px;
+      max-height: 88vh;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+    }
+
+    .modal-header {
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--border-color);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .modal-body {
+      padding: 20px;
+      overflow-y: auto;
+      font-size: 13px;
+    }
+
+    .modal-close {
+      background: none;
+      border: none;
+      color: var(--text-secondary);
+      font-size: 20px;
+      cursor: pointer;
+    }
+
+    .json-pre {
+      background: var(--bg-primary);
+      padding: 12px;
+      border-radius: 4px;
+      font-family: monospace;
+      font-size: 12px;
+      overflow-x: auto;
+      white-space: pre-wrap;
+      color: #79c0ff;
+    }
+
+    /* Folder Chooser Browser in Modal */
+    .chooser-shortcuts {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-bottom: 12px;
+    }
+
+    .chooser-shortcut-btn {
+      background: var(--bg-tertiary);
+      border: 1px solid var(--border-color);
+      color: var(--text-secondary);
+      padding: 5px 12px;
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .chooser-shortcut-btn:hover {
+      color: var(--text-primary);
+      border-color: var(--accent);
+      background: #1c2128;
+    }
+
+    .chooser-path-bar {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+
+    .chooser-path-input {
+      flex: 1;
+      background: var(--bg-primary);
+      border: 1px solid var(--border-color);
+      padding: 8px 12px;
+      border-radius: var(--radius);
+      font-family: monospace;
+      font-size: 12px;
+      color: var(--accent);
+      outline: none;
+    }
+    .chooser-path-input:focus {
+      border-color: var(--accent);
+    }
+
+    .folder-list-box {
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius);
+      max-height: 280px;
+      overflow-y: auto;
+      background: var(--bg-primary);
+    }
+
+    .folder-item-row {
+      padding: 9px 14px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      cursor: pointer;
+      border-bottom: 1px solid #1c2128;
+      font-size: 13px;
+    }
+    .folder-item-row:hover {
+      background: #161b22;
+      color: var(--accent);
+    }
+
+    .file-item-row {
+      padding: 7px 14px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid #161b22;
+      font-size: 12px;
+      color: var(--text-secondary);
+    }
+
+    /* AI Chat Output */
+    .chat-bubble {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius);
+      padding: 20px;
+      margin-top: 16px;
+      line-height: 1.6;
+    }
+
+    .chat-bubble details {
+      margin-top: 14px;
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius);
+      background: var(--bg-primary);
+      padding: 10px 14px;
+    }
+
+    .chat-bubble details summary {
+      cursor: pointer;
+      font-weight: 600;
+      color: var(--accent);
+      user-select: none;
+      outline: none;
+    }
+
+    .chat-bubble details[open] summary {
+      margin-bottom: 12px;
+      border-bottom: 1px solid var(--border-color);
+      padding-bottom: 8px;
+    }
+
+    .chat-bubble pre {
+      background: var(--bg-primary);
+      padding: 12px;
+      border-radius: 6px;
+      border: 1px solid var(--border-color);
+      font-family: monospace;
+      font-size: 12px;
+      margin: 10px 0;
+      white-space: pre-wrap;
+      color: #c9d1d9;
+    }
+
+    /* In-App Toast Notification Banner */
+    .toast-container {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      z-index: 9999;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .toast {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-color);
+      border-left: 4px solid var(--accent);
+      color: var(--text-primary);
+      padding: 12px 18px;
+      border-radius: var(--radius);
+      box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+      font-size: 13px;
+      max-width: 400px;
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      animation: toastSlideIn 0.25s ease-out;
+    }
+    .toast-success { border-left-color: var(--success); }
+    .toast-error { border-left-color: var(--danger); }
+    .toast-warning { border-left-color: var(--warning); }
+
+    @keyframes toastSlideIn {
+      from { transform: translateX(100%); opacity: 0; }
+      to { transform: translateX(0); opacity: 1; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Top Header -->
+  <header>
+    <div class="brand">
+      <div class="logo-icon">M</div>
+      <div>
+        <div class="brand-title">MindFS Intelligence</div>
+      </div>
+      <div class="workspace-badge" onclick="openFolderChooser('workspace')" title="Click to choose a different workspace folder">
+        <span>📁</span>
+        <span id="wsRootDisplay">Loading...</span>
+        <span style="color:var(--accent); font-size:11px; font-weight:600;">[Choose Folder]</span>
+      </div>
+    </div>
+    <div class="header-stats">
+      <span class="pill pill-privacy">100% Local &amp; Private</span>
+      <span class="pill pill-memory" id="peakRssBadge">Peak RSS: -- MB / &lt;1.7 GB</span>
+    </div>
+  </header>
+
+  <!-- Tab Bar -->
+  <nav class="tabs">
+    <button class="tab-btn active" onclick="switchTab('dashboard')">📊 Dashboard</button>
+    <button class="tab-btn" onclick="switchTab('explorer')">📁 Filesystem Explorer</button>
+    <button class="tab-btn" onclick="switchTab('search')">🔍 Semantic Search</button>
+    <button class="tab-btn" onclick="switchTab('chat')">💬 AI Assistant (RAG)</button>
+    <button class="tab-btn" onclick="switchTab('diagnostics')">📈 Memory Diagnostics</button>
+  </nav>
+
+  <!-- Main Content -->
+  <main>
+
+    <!-- Dashboard Tab -->
+    <div id="tab-dashboard" class="tab-pane active">
+      <div class="metrics-grid">
+        <div class="card">
+          <div class="card-title">Files Indexed</div>
+          <div class="card-value" id="metricFilesIndexed">0</div>
+          <div class="card-subtext" id="metricFilesTotal">Total scanned: 0</div>
+        </div>
+        <div class="card">
+          <div class="card-title">Semantic Artifacts</div>
+          <div class="card-value" id="metricArtifacts">0</div>
+          <div class="card-subtext">Page, table, and media representations</div>
+        </div>
+        <div class="card">
+          <div class="card-title">Vector Embeddings</div>
+          <div class="card-value" id="metricVectors">0</div>
+          <div class="card-subtext">Persisted in FAISS</div>
+        </div>
+        <div class="card">
+          <div class="card-title">Process Peak RSS</div>
+          <div class="card-value" id="metricPeakRss">0 MB</div>
+          <div class="card-subtext">Budget ceiling: 1740 MB (2 GB)</div>
+        </div>
+      </div>
+
+      <!-- Folder Chooser & Indexing Panel -->
+      <div class="card">
+        <div class="card-title">Folder Selection &amp; Incremental Indexing</div>
+        <div style="margin-top: 14px; display: flex; flex-direction: column; gap: 12px;">
+          
+          <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+            <span style="font-size: 13px; color: var(--text-secondary); font-weight: 500;">Target Folder:</span>
+            <div class="folder-tag" id="dashSelectedFolderTag">
+              <span>📁</span>
+              <span id="dashSelectedFolderText">Entire Workspace (Root)</span>
+            </div>
+            <button class="btn btn-accent" onclick="openFolderChooser('index_target')">📂 Browse &amp; Choose Folder...</button>
+            <button class="btn" onclick="resetIndexFolderToRoot()">Reset to Root</button>
+          </div>
+
+          <div class="btn-row" style="margin-top: 4px; margin-bottom: 0;">
+            <label class="checkbox-label" style="background: var(--bg-tertiary); padding: 8px 12px; border-radius: var(--radius); border: 1px solid var(--border-color);">
+              <input type="checkbox" id="dashRecursiveCheckbox" checked>
+              <strong style="color:var(--text-primary);">Recursive Indexing</strong>
+              <span style="color:var(--text-secondary); font-size:12px;">(include all nested subfolders)</span>
+            </label>
+            <button class="btn btn-primary" onclick="triggerCustomIndex()" id="btnIndexTarget" style="padding: 9px 20px; font-size: 14px;">⚡ Index Selected Folder</button>
+            <button class="btn" onclick="confirmRebuildPrompt()">🔄 Full Rebuild</button>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- Live Real-Time Indexing Progress Card -->
+      <div id="indexingProgressCard" class="progress-card">
+        <div class="progress-header">
+          <span style="font-weight:600; color:var(--text-primary); display:flex; align-items:center; gap:8px;">
+            <span id="progressSpinner">⚡</span>
+            <span id="progressTitle">Indexing Files...</span>
+          </span>
+          <span id="progressPercent" style="font-weight:bold; color:var(--accent);">0%</span>
+        </div>
+        <div class="progress-bar-track">
+          <div id="progressBarFill" class="progress-bar-fill"></div>
+        </div>
+        <div class="progress-details">
+          <span class="progress-current-file" id="progressCurrentFile">Preparing scan...</span>
+          <span id="progressCounts">Processed: 0 / 0 (Indexed: 0, Skipped: 0)</span>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Persistent Dual-Store Status</div>
+        <p style="font-size: 13px; color: var(--text-secondary); margin-top: 8px;">
+          Authoritative SQLite metadata database and FAISS CPU vector index are active and persisted. Incremental indexing skips unchanged files automatically.
+        </p>
+      </div>
+    </div>
+
+    <!-- Explorer Tab -->
+    <div id="tab-explorer" class="tab-pane">
+      <!-- Breadcrumb Bar -->
+      <div class="breadcrumb-bar" id="breadcrumbBar">
+        <span class="crumb-link" onclick="navigateToFolder('')">📁 Workspace Root</span>
+      </div>
+
+      <div class="btn-row">
+        <button class="btn btn-primary" onclick="indexCurrentExplorerFolder()" id="btnIndexExplorerFolder">⚡ Index Current Folder (<span id="explorerRecursiveLabel">Recursive</span>)</button>
+        <label class="checkbox-label" style="margin-left: 8px;">
+          <input type="checkbox" id="explorerRecursiveCheckbox" checked onchange="updateExplorerRecursiveLabel()">
+          <span>Recursive</span>
+        </label>
+        <button class="btn" onclick="loadFiles(currentExplorerPath)">↻ Refresh</button>
+      </div>
+
+      <div class="card" style="padding: 0; overflow: hidden;">
+        <table class="explorer-table">
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Type / Category</th>
+              <th>Size</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody id="filesTableBody">
+            <tr><td colspan="4" style="text-align: center; color: var(--text-secondary);">Loading files...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Search Tab -->
+    <div id="tab-search" class="tab-pane">
+      <div class="search-bar-row">
+        <input type="text" id="searchInput" class="input-field" placeholder="Enter semantic query (e.g. database migration, customer plan, audio duration)..." onkeydown="if(event.key==='Enter') executeSearch()">
+        <input type="text" id="searchPathFilter" class="input-field" style="max-width: 200px;" placeholder="Path filter (optional)">
+        <select id="searchTypeFilter" class="select-field">
+          <option value="">All Types</option>
+          <option value="document">Documents</option>
+          <option value="structured">Structured</option>
+          <option value="image">Images</option>
+          <option value="audio">Audio</option>
+          <option value="video">Video</option>
+          <option value="archive">Archives</option>
+          <option value="binary">Binaries</option>
+        </select>
+        <button class="btn btn-primary" onclick="executeSearch()">Search</button>
+      </div>
+      <div id="searchResults"></div>
+    </div>
+
+    <!-- Chat Tab -->
+    <div id="tab-chat" class="tab-pane">
+      <div class="search-bar-row">
+        <input type="text" id="chatInput" class="input-field" placeholder="Ask MindFS anything (e.g. 'what files are in this folder?', 'what database is used for Apollo?')..." onkeydown="if(event.key==='Enter') executeAsk()">
+        <button class="btn btn-primary" onclick="executeAsk()">Ask MindFS</button>
+      </div>
+      <div id="chatResponse" style="display: none;" class="chat-bubble"></div>
+    </div>
+
+    <!-- Diagnostics Tab -->
+    <div id="tab-diagnostics" class="tab-pane">
+      <div class="btn-row">
+        <button class="btn" onclick="loadDiagnostics()">↻ Refresh Diagnostics</button>
+      </div>
+      <div class="card">
+        <div class="card-title">Memory &amp; Resource Breakdown</div>
+        <div id="diagnosticsSummary" style="font-size: 13px; line-height: 1.8; margin-top: 8px;"></div>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- Inspector Modal -->
+  <div id="inspectorModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 id="modalTitle">File Inspection</h3>
+        <button class="modal-close" onclick="closeModal('inspectorModal')">&times;</button>
+      </div>
+      <div class="modal-body">
+        <pre class="json-pre" id="modalDetails"></pre>
+      </div>
+    </div>
+  </div>
+
+  <!-- In-App Confirmation Prompt Modal -->
+  <div id="confirmModal" class="modal">
+    <div class="modal-content" style="max-width: 480px;">
+      <div class="modal-header">
+        <h3 id="confirmModalTitle">Confirm Action</h3>
+        <button class="modal-close" onclick="closeModal('confirmModal')">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p id="confirmModalMessage" style="font-size: 14px; line-height: 1.5; color: var(--text-primary); margin-bottom: 20px;"></p>
+        <div style="display: flex; justify-content: flex-end; gap: 12px;">
+          <button class="btn" onclick="closeModal('confirmModal')">Cancel</button>
+          <button class="btn btn-primary" id="confirmModalBtnAction">Confirm</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Visual Folder Chooser Dialog Modal -->
+  <div id="folderChooserModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 id="folderChooserTitle">📂 Choose Folder</h3>
+        <button class="modal-close" onclick="closeModal('folderChooserModal')">&times;</button>
+      </div>
+      <div class="modal-body">
+        
+        <!-- Shortcuts -->
+        <div style="font-size: 11px; color: var(--text-secondary); margin-bottom: 6px; font-weight: 600;">QUICK LOCATIONS:</div>
+        <div class="chooser-shortcuts" id="chooserShortcutsContainer">
+          <!-- Populated by JS -->
+        </div>
+
+        <!-- Editable path bar -->
+        <div style="font-size: 11px; color: var(--text-secondary); margin-bottom: 4px; font-weight: 600;">LOCATION PATH:</div>
+        <div class="chooser-path-bar">
+          <input type="text" id="chooserPathInput" class="chooser-path-input" placeholder="/path/to/folder" onkeydown="if(event.key==='Enter') browseFolderDirectory(this.value.trim())">
+          <button class="btn" onclick="browseFolderDirectory(document.getElementById('chooserPathInput').value.trim())">Go</button>
+        </div>
+
+        <!-- Folder and File List -->
+        <div class="folder-list-box" id="chooserFolderListBox">
+          <div style="padding: 16px; text-align: center; color: var(--text-secondary);">Loading directory contents...</div>
+        </div>
+
+        <!-- Selection Confirmation Footer -->
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--border-color);">
+          <button class="btn" onclick="closeModal('folderChooserModal')">Cancel</button>
+          <button class="btn btn-primary" onclick="confirmFolderSelection()" id="btnConfirmFolderChoice">
+            ✓ Select This Folder
+          </button>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification Container -->
+  <div class="toast-container" id="toastContainer"></div>
+
+  <script>
+    let currentExplorerPath = '';
+    let selectedIndexFolder = '';
+    let chooserMode = 'workspace';
+    let chooserBrowsingPath = '';
+
+    // In-App Toast System
+    function showToast(message, type = 'info', durationMs = 4000) {
+      const container = document.getElementById('toastContainer');
+      const toast = document.createElement('div');
+      toast.className = `toast toast-${type}`;
+      
+      const icon = type === 'success' ? '✓' : type === 'error' ? '✕' : type === 'warning' ? '⚠' : 'ℹ';
+      toast.innerHTML = `<span style="font-weight:bold;">${icon}</span><div style="flex:1;">${message}</div>`;
+      
+      container.appendChild(toast);
+      setTimeout(() => {
+        toast.style.opacity = '0';
+        toast.style.transform = 'translateY(10px)';
+        toast.style.transition = 'all 0.3s';
+        setTimeout(() => toast.remove(), 300);
+      }, durationMs);
+    }
+
+    // In-App Confirmation Modal System
+    function showConfirmModal(title, message, onConfirm) {
+      document.getElementById('confirmModalTitle').innerText = title;
+      document.getElementById('confirmModalMessage').innerText = message;
+      const btn = document.getElementById('confirmModalBtnAction');
+      btn.onclick = () => {
+        closeModal('confirmModal');
+        onConfirm();
+      };
+      document.getElementById('confirmModal').classList.add('active');
+    }
+
+    function switchTab(tabId) {
+      document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+      document.querySelectorAll('.tab-pane').forEach(pane => pane.classList.remove('active'));
+      event.target.classList.add('active');
+      document.getElementById('tab-' + tabId).classList.add('active');
+
+      if (tabId === 'explorer') loadFiles(currentExplorerPath);
+      if (tabId === 'diagnostics') loadDiagnostics();
+    }
+
+    async function loadStatus() {
+      try {
+        const res = await fetch('/api/status');
+        const data = await res.json();
+        document.getElementById('wsRootDisplay').innerText = data.workspace_root || '.';
+        document.getElementById('metricFilesIndexed').innerText = (data.files_indexed || 0);
+        document.getElementById('metricFilesTotal').innerText = 'Total scanned: ' + (data.files_total || 0);
+        document.getElementById('metricArtifacts').innerText = (data.artifacts_count || 0);
+        document.getElementById('metricVectors').innerText = (data.vectors_count || 0);
+        document.getElementById('metricPeakRss').innerText = (data.peak_rss_mb ? data.peak_rss_mb.toFixed(1) : '0') + ' MB';
+        document.getElementById('peakRssBadge').innerText = 'Peak RSS: ' + (data.peak_rss_mb ? data.peak_rss_mb.toFixed(1) : '0') + ' MB / <1.7 GB';
+      } catch (err) {
+        console.error('Failed to load status', err);
+      }
+    }
+
+    // ---------------- Folder Chooser Logic ----------------
+
+    function openFolderChooser(mode = 'workspace') {
+      chooserMode = mode;
+      const title = mode === 'workspace' ? '📂 Choose Active Workspace Folder' : '📂 Choose Folder to Index';
+      document.getElementById('folderChooserTitle').innerText = title;
+      document.getElementById('folderChooserModal').classList.add('active');
+      browseFolderDirectory('');
+    }
+
+    async function browseFolderDirectory(targetPath = '') {
+      const listContainer = document.getElementById('chooserFolderListBox');
+      listContainer.innerHTML = '<div style="padding: 16px; text-align: center; color: var(--text-secondary);">Loading directory contents...</div>';
+
+      try {
+        const res = await fetch('/api/browse_directories?path=' + encodeURIComponent(targetPath));
+        const data = await res.json();
+        chooserBrowsingPath = data.current_path;
+        document.getElementById('chooserPathInput').value = data.current_path;
+
+        // Populate shortcuts
+        if (data.shortcuts) {
+          const scContainer = document.getElementById('chooserShortcutsContainer');
+          scContainer.innerHTML = data.shortcuts.map(sc => `
+            <button class="chooser-shortcut-btn" onclick="browseFolderDirectory('${sc.path.replace(/\\/g, '\\\\')}')">
+              📁 ${sc.label}
+            </button>
+          `).join('');
+        }
+
+        let html = '';
+        if (data.parent_path) {
+          html += `
+            <div class="folder-item-row" onclick="browseFolderDirectory('${data.parent_path.replace(/\\/g, '\\\\')}')" style="color:var(--accent); font-weight:600;">
+              <span style="display:flex; align-items:center; gap:8px;">📁 .. (Parent Folder)</span>
+              <span style="font-size:11px; color:var(--text-secondary);">Up one level</span>
+            </div>
+          `;
+        }
+
+        const dirs = data.directories || [];
+        const files = data.files || [];
+
+        if (dirs.length === 0 && files.length === 0) {
+          html += '<div style="padding: 16px; color: var(--text-secondary); text-align: center;">Empty directory</div>';
+        } else {
+          // Render subdirectories
+          dirs.forEach(d => {
+            const fullSub = chooserBrowsingPath.endsWith('/') ? `${chooserBrowsingPath}${d}` : `${chooserBrowsingPath}/${d}`;
+            html += `
+              <div class="folder-item-row" onclick="browseFolderDirectory('${fullSub.replace(/\\/g, '\\\\')}')">
+                <span style="display:flex; align-items:center; gap:8px; font-weight:500;">📁 ${d}</span>
+                <span style="font-size:11px; color:var(--accent);">Open folder →</span>
+              </div>
+            `;
+          });
+
+          // Render files in folder
+          files.forEach(f => {
+            html += `
+              <div class="file-item-row">
+                <span style="display:flex; align-items:center; gap:8px;">📄 ${f.name}</span>
+                <span>${(f.size || 0).toLocaleString()} bytes</span>
+              </div>
+            `;
+          });
+        }
+
+        listContainer.innerHTML = html;
+      } catch (err) {
+        listContainer.innerHTML = `<div style="padding: 16px; color: var(--danger);">Failed to browse: ${err}</div>`;
+      }
+    }
+
+    async function confirmFolderSelection() {
+      if (!chooserBrowsingPath) return;
+
+      if (chooserMode === 'workspace') {
+        try {
+          const res = await fetch('/api/set_workspace', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ workspace_root: chooserBrowsingPath })
+          });
+          const data = await res.json();
+          if (data.error) {
+            showToast('Error switching workspace: ' + data.error, 'error');
+          } else {
+            closeModal('folderChooserModal');
+            currentExplorerPath = '';
+            resetIndexFolderToRoot();
+            await loadStatus();
+            await loadFiles('');
+            showToast('Active Workspace switched to: ' + data.workspace_root, 'success');
+          }
+        } catch (err) {
+          showToast('Failed to switch workspace: ' + err, 'error');
+        }
+      } else {
+        selectedIndexFolder = chooserBrowsingPath;
+        document.getElementById('dashSelectedFolderText').innerText = chooserBrowsingPath;
+        closeModal('folderChooserModal');
+        showToast('Selected target folder for indexing: ' + chooserBrowsingPath, 'info');
+      }
+    }
+
+    function resetIndexFolderToRoot() {
+      selectedIndexFolder = '';
+      document.getElementById('dashSelectedFolderText').innerText = 'Entire Workspace (Root)';
+    }
+
+    // ---------------- Indexing Operations & Real-Time Progress ----------------
+
+    let progressPollTimer = null;
+
+    function startProgressTracking(onComplete) {
+      const card = document.getElementById('indexingProgressCard');
+      const fill = document.getElementById('progressBarFill');
+      const percentEl = document.getElementById('progressPercent');
+      const countsEl = document.getElementById('progressCounts');
+      const fileEl = document.getElementById('progressCurrentFile');
+      const titleEl = document.getElementById('progressTitle');
+      const spinnerEl = document.getElementById('progressSpinner');
+
+      card.style.display = 'block';
+      fill.style.width = '0%';
+      percentEl.innerText = '0%';
+      titleEl.innerText = 'Scanning & Indexing...';
+      spinnerEl.innerText = '⏳';
+      fileEl.innerText = 'Scanning workspace files...';
+      countsEl.innerText = 'Processed: 0 / 0 (Indexed: 0, Skipped: 0)';
+
+      if (progressPollTimer) clearInterval(progressPollTimer);
+
+      progressPollTimer = setInterval(async () => {
+        try {
+          const res = await fetch('/api/index/progress');
+          const p = await res.json();
+
+          if (p.is_indexing) {
+            fill.style.width = Math.max(p.percent, 5) + '%';
+            percentEl.innerText = p.percent + '%';
+            fileEl.innerText = p.current_file ? `${p.current_file}` : 'Processing...';
+            countsEl.innerText = `Processed: ${p.processed} / ${p.total} (Indexed: ${p.indexed}, Skipped: ${p.skipped})`;
+          } else if (p.status === 'completed') {
+            fill.style.width = '100%';
+            percentEl.innerText = '100%';
+            titleEl.innerText = 'Completed!';
+            spinnerEl.innerText = '✅';
+            fileEl.innerText = 'All files processed.';
+            countsEl.innerText = `Total: ${p.total} (Indexed: ${p.indexed}, Skipped: ${p.skipped})`;
+            clearInterval(progressPollTimer);
+            progressPollTimer = null;
+
+            setTimeout(() => {
+              card.style.display = 'none';
+            }, 3000);
+
+            if (onComplete) onComplete(p.last_result);
+          } else if (p.status === 'failed') {
+            clearInterval(progressPollTimer);
+            progressPollTimer = null;
+            titleEl.innerText = 'Failed';
+            spinnerEl.innerText = '✕';
+            fileEl.innerText = p.error || 'Indexing error occurred.';
+            setTimeout(() => { card.style.display = 'none'; }, 4000);
+          }
+        } catch (e) {
+          console.error('Progress poll error', e);
+        }
+      }, 150);
+    }
+
+    async function triggerCustomIndex() {
+      const isRecursive = document.getElementById('dashRecursiveCheckbox').checked;
+      const btn = document.getElementById('btnIndexTarget');
+      btn.innerText = '⏳ Indexing...';
+      btn.disabled = true;
+
+      startProgressTracking((lastResult) => {
+        loadStatus();
+      });
+
+      try {
+        const res = await fetch('/api/index', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ path: selectedIndexFolder, recursive: isRecursive })
+        });
+        const data = await res.json();
+        if (!res.ok || data.error) {
+          showToast('Indexing failed: ' + (data.error || 'Server error'), 'error');
+        } else {
+          const scanned = data.files_scanned ?? 0;
+          const indexed = data.files_indexed ?? 0;
+          const skipped = data.files_skipped ?? 0;
+          const dur = typeof data.duration_seconds === 'number' ? data.duration_seconds.toFixed(2) : '0';
+
+          if (indexed === 0 && scanned > 0) {
+            showToast(`✨ Everything up to date! 0 new files, ${skipped} already indexed & skipped.`, 'info', 5000);
+          } else {
+            showToast(`✅ Indexing Complete! Indexed: ${indexed} new files, Skipped: ${skipped} (${dur}s)`, 'success', 5000);
+          }
+          loadStatus();
+        }
+      } catch (err) {
+        showToast('Indexing failed: ' + err, 'error');
+      } finally {
+        btn.innerText = '⚡ Index Selected Folder';
+        btn.disabled = false;
+      }
+    }
+
+    function confirmRebuildPrompt() {
+      showConfirmModal(
+        '🔄 Full Index Rebuild',
+        'Are you sure you want to clear all existing metadata and vector indexes to rebuild the entire workspace from scratch?',
+        triggerRebuild
+      );
+    }
+
+    async function triggerRebuild() {
+      const card = document.getElementById('indexingProgressCard');
+      card.style.display = 'block';
+      startProgressTracking((lastResult) => {
+        loadStatus();
+      });
+
+      try {
+        const res = await fetch('/api/rebuild', { method: 'POST' });
+        const data = await res.json();
+        if (!res.ok || data.error) {
+          showToast('Rebuild failed: ' + (data.error || 'Server error'), 'error');
+        } else {
+          const indexed = data.files_indexed ?? 0;
+          const artifacts = data.total_artifacts ?? 0;
+          showToast(`✅ Full Rebuild Complete! Indexed: ${indexed} files | Artifacts: ${artifacts}`, 'success');
+          loadStatus();
+        }
+      } catch (err) {
+        showToast('Rebuild failed: ' + err, 'error');
+      }
+    }
+
+    function updateExplorerRecursiveLabel() {
+      const isRec = document.getElementById('explorerRecursiveCheckbox').checked;
+      document.getElementById('explorerRecursiveLabel').innerText = isRec ? 'Recursive' : 'Non-recursive';
+    }
+
+    async function indexCurrentExplorerFolder() {
+      const isRec = document.getElementById('explorerRecursiveCheckbox').checked;
+      const btn = document.getElementById('btnIndexExplorerFolder');
+      btn.innerText = '⏳ Indexing...';
+      btn.disabled = true;
+
+      startProgressTracking(() => {
+        loadStatus();
+      });
+
+      try {
+        const res = await fetch('/api/index', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ path: currentExplorerPath, recursive: isRec })
+        });
+        const data = await res.json();
+        if (!res.ok || data.error) {
+          showToast('Folder indexing failed: ' + (data.error || 'Server error'), 'error');
+        } else {
+          const scanned = data.files_scanned ?? 0;
+          const indexed = data.files_indexed ?? 0;
+          const skipped = data.files_skipped ?? 0;
+          if (indexed === 0 && scanned > 0) {
+            showToast(`✨ Everything up to date! 0 new files, ${skipped} already indexed & skipped.`, 'info', 5000);
+          } else {
+            showToast(`✅ Folder Indexed! Indexed: ${indexed} new files, Skipped: ${skipped}`, 'success', 5000);
+          }
+          loadStatus();
+        }
+      } catch (err) {
+        showToast('Indexing failed: ' + err, 'error');
+      } finally {
+        btn.innerText = `⚡ Index Current Folder (${isRec ? 'Recursive' : 'Non-recursive'})`;
+        btn.disabled = false;
+      }
+    }
+
+    // ---------------- Filesystem Explorer ----------------
+
+    function updateBreadcrumbs(subpath) {
+      const bar = document.getElementById('breadcrumbBar');
+      if (!subpath || subpath === '.') {
+        bar.innerHTML = `<span class="crumb-link" onclick="navigateToFolder('')">📁 Workspace Root</span>`;
+        return;
+      }
+      const parts = subpath.split('/').filter(Boolean);
+      let accumulated = '';
+      let html = `<span class="crumb-link" onclick="navigateToFolder('')">📁 Root</span>`;
+      parts.forEach((p) => {
+        accumulated = accumulated ? `${accumulated}/${p}` : p;
+        const clickPath = accumulated;
+        html += ` <span class="crumb-sep">/</span> <span class="crumb-link" onclick="navigateToFolder('${clickPath}')">${p}</span>`;
+      });
+      bar.innerHTML = html;
+    }
+
+    async function navigateToFolder(subpath) {
+      currentExplorerPath = subpath;
+      await loadFiles(subpath);
+    }
+
+    async function loadFiles(subpath = '') {
+      currentExplorerPath = subpath;
+      updateBreadcrumbs(subpath);
+      const tbody = document.getElementById('filesTableBody');
+      tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;">Loading workspace files...</td></tr>';
+      try {
+        const res = await fetch('/api/files?path=' + encodeURIComponent(subpath));
+        const data = await res.json();
+
+        let rowsHtml = '';
+        if (data.parent_path !== null && data.parent_path !== undefined) {
+          rowsHtml += `
+            <tr onclick="navigateToFolder('${data.parent_path}')" class="row-folder">
+              <td>📁 <strong>.. (Up to parent folder)</strong></td>
+              <td><span class="cat-badge cat-DIR">DIRECTORY</span></td>
+              <td>--</td>
+              <td><button class="btn" style="padding: 4px 8px; font-size: 11px;">Open</button></td>
+            </tr>
+          `;
+        }
+
+        if (!data.entries || data.entries.length === 0) {
+          if (!rowsHtml) {
+            tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; color: var(--text-secondary);">No files or folders in this directory.</td></tr>';
+            return;
+          }
+        } else {
+          rowsHtml += data.entries.map(e => {
+            const entrySubpath = subpath ? `${subpath}/${e.name}` : e.name;
+            const isDir = e.type === 'directory';
+            if (isDir) {
+              return `
+                <tr onclick="navigateToFolder('${entrySubpath}')" class="row-folder">
+                  <td>📁 <strong>${e.name}/</strong></td>
+                  <td><span class="cat-badge cat-DIR">DIRECTORY</span></td>
+                  <td>--</td>
+                  <td><button class="btn btn-accent" style="padding: 4px 8px; font-size: 11px;">Open Folder</button></td>
+                </tr>
+              `;
+            } else {
+              return `
+                <tr>
+                  <td>📄 ${e.name}</td>
+                  <td><span class="cat-badge cat-DOCUMENT">FILE</span></td>
+                  <td>${e.size_bytes.toLocaleString()} bytes</td>
+                  <td>
+                    <button class="btn" style="padding: 4px 8px; font-size: 11px;" onclick="inspectFile('${entrySubpath}')">Inspect</button>
+                  </td>
+                </tr>
+              `;
+            }
+          }).join('');
+        }
+
+        tbody.innerHTML = rowsHtml;
+      } catch (err) {
+        tbody.innerHTML = `<tr><td colspan="4" style="color:var(--danger)">Error: ${err}</td></tr>`;
+      }
+    }
+
+    async function inspectFile(filePath) {
+      try {
+        const res = await fetch('/api/inspect?file_path=' + encodeURIComponent(filePath));
+        const data = await res.json();
+        document.getElementById('modalTitle').innerText = 'Inspection: ' + filePath;
+        document.getElementById('modalDetails').innerText = JSON.stringify(data, null, 2);
+        document.getElementById('inspectorModal').classList.add('active');
+      } catch (err) {
+        showToast('Inspection failed: ' + err, 'error');
+      }
+    }
+
+    function closeModal(modalId) {
+      document.getElementById(modalId).classList.remove('active');
+    }
+
+    // ---------------- Search & AI Chat ----------------
+
+    async function executeSearch() {
+      const q = document.getElementById('searchInput').value.trim();
+      const pathFilter = document.getElementById('searchPathFilter').value.trim();
+      const typeFilter = document.getElementById('searchTypeFilter').value;
+      if (!q) return;
+
+      const container = document.getElementById('searchResults');
+      container.innerHTML = '<p style="color:var(--text-secondary);">Searching evidence in FAISS + SQLite...</p>';
+
+      try {
+        const res = await fetch('/api/search', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ query: q, path_filter: pathFilter, type_filter: typeFilter, limit: 5 })
+        });
+        const data = await res.json();
+
+        if (!data.evidence || data.evidence.length === 0) {
+          container.innerHTML = `<div class="card" style="color:var(--warning)">No relevant evidence found for query: "${q}".</div>`;
+          return;
+        }
+
+        container.innerHTML = data.evidence.map((ev, idx) => `
+          <div class="evidence-item">
+            <div class="evidence-header">
+              <span class="citation-title">[#${idx + 1}] ${ev.citation}</span>
+              <span class="score-badge">Similarity: ${ev.similarity}</span>
+            </div>
+            <div class="evidence-body">${ev.text}</div>
+          </div>
+        `).join('');
+      } catch (err) {
+        container.innerHTML = `<div class="card" style="color:var(--danger)">Search error: ${err}</div>`;
+      }
+    }
+
+    function renderMarkdownToHtml(mdText) {
+      if (!mdText) return '';
+      let html = mdText;
+      
+      // Preserve code blocks before paragraph replacement
+      const codeBlocks = [];
+      html = html.replace(/```([a-zA-Z]*)\n([\s\S]*?)```/g, (match, lang, code) => {
+        const id = `__CODE_BLOCK_${codeBlocks.length}__`;
+        codeBlocks.push(`<pre><code>${code.replace(/</g, '&lt;').replace(/>/g, '&gt;').trim()}</code></pre>`);
+        return id;
+      });
+
+      // Inline code
+      html = html.replace(/`([^`]+)`/g, '<code>$1</code>');
+      // Bold
+      html = html.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+      // Headers
+      html = html.replace(/^#### (.*$)/gim, '<h5 style="color:var(--text-primary); margin-top:10px; margin-bottom:4px;">$1</h5>');
+      html = html.replace(/^### (.*$)/gim, '<h4 style="color:var(--accent); margin-top:12px; margin-bottom:6px;">$1</h4>');
+      html = html.replace(/^## (.*$)/gim, '<h3 style="color:var(--accent); margin-top:14px; margin-bottom:8px;">$1</h3>');
+      
+      // Bullet lists
+      html = html.replace(/^[•\-] (.*$)/gim, '<li style="margin-left: 18px; margin-bottom: 4px;">$1</li>');
+      
+      // Restore code blocks
+      codeBlocks.forEach((block, idx) => {
+        html = html.replace(`__CODE_BLOCK_${idx}__`, block);
+      });
+
+      // Convert double newlines to paragraph breaks
+      html = html.replace(/\n\n/g, '<br><br>');
+      return html;
+    }
+
+    async function executeAsk() {
+      const q = document.getElementById('chatInput').value.trim();
+      if (!q) return;
+
+      const box = document.getElementById('chatResponse');
+      box.style.display = 'block';
+      box.innerHTML = '<p style="color:var(--text-secondary);">Thinking &amp; synthesizing evidence-grounded answer...</p>';
+
+      try {
+        const res = await fetch('/api/ask', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ query: q })
+        });
+        const data = await res.json();
+
+        const formattedHtml = renderMarkdownToHtml(data.answer);
+
+        box.innerHTML = `
+          <h4 style="margin-bottom: 12px; color: var(--accent); display:flex; align-items:center; gap:8px;">
+            <span>🤖</span> <span>Grounded Answer</span>
+          </h4>
+          <div style="font-size: 14px; line-height: 1.6;">${formattedHtml}</div>
+          <div style="margin-top: 14px; padding-top: 10px; border-top: 1px solid var(--border-color); font-size: 12px; color: var(--text-secondary); display:flex; justify-content:space-between;">
+            <span>Actions: ${data.total_steps}</span>
+            <span>Reasoning Flow: ${data.actions ? data.actions.map(a => a.thought).join(' → ') : 'Direct answer'}</span>
+          </div>
+        `;
+      } catch (err) {
+        box.innerHTML = `<p style="color:var(--danger)">Error: ${err}</p>`;
+      }
+    }
+
+    async function loadDiagnostics() {
+      const container = document.getElementById('diagnosticsSummary');
+      container.innerHTML = 'Loading memory diagnostics...';
+      try {
+        const res = await fetch('/api/diagnostics');
+        const d = await res.json();
+        container.innerHTML = `
+          <p><strong>Current Process RSS:</strong> ${d.current_rss_mb} MB</p>
+          <p><strong>Peak Process RSS:</strong> ${d.peak_rss_mb} MB</p>
+          <p><strong>Hard Memory Budget:</strong> ${d.budget_max_rss_mb} MB (&lt; 1.7 GB)</p>
+          <p><strong>Safety Margin Remaining:</strong> ${d.budget_remaining_mb} MB</p>
+          <p><strong>Operations Tracked:</strong> ${d.operations_recorded}</p>
+        `;
+      } catch (err) {
+        container.innerHTML = `<p style="color:var(--danger)">Error: ${err}</p>`;
+      }
+    }
+
+    // Initial load
+    loadStatus();
+  </script>
+</body>
+</html>
