@@ -12,39 +12,25 @@ MindFS indexes documents, structured data, media, archives, and binaries; extrac
 
 A short product walkthrough: **index → ask → review → approve → execute → audit/undo**.
 
-> **Note:** The screenshots below are the canonical README walkthrough. The captured UI includes the full product chrome so the interaction flow remains visible on GitHub without relying on an external video asset.
+<p align="center">
+  <img src="assets/mindfs-demo.gif" alt="MindFS demo: index workspace, ask the agent, review proposed filesystem actions, approve execution, and inspect the audit trail" width="420"/>
+</p>
 
 ### 1. Index & inspect
 
 The dashboard exposes indexed files, semantic artifacts, vector chunks, resource usage, and indexed workspace roots at a glance.
 
-<p align="center">
-  <img src="assets/mindfs-dashboard.jpg" alt="MindFS dashboard showing indexed files, semantic artifacts, vector chunks, peak RSS, and indexed workspace roots" width="780"/>
-</p>
-
 ### 2. Ask the agent
 
 The local intelligence agent explores the indexed workspace and turns a natural-language request into a concrete proposed action plan.
-
-<p align="center">
-  <img src="assets/mindfs-agent-proposal.jpg" alt="MindFS agent presenting a proposed filesystem action plan for explicit user approval" width="780"/>
-</p>
 
 ### 3. Review & approve
 
 Mutating filesystem operations are surfaced explicitly before execution, with **Approve & Execute** and **Reject / Cancel** controls.
 
-<p align="center">
-  <img src="assets/mindfs-approval.jpg" alt="MindFS approval screen showing filesystem operations awaiting explicit approval" width="780"/>
-</p>
-
 ### 4. Audit & undo
 
 Completed mutations are recorded in the audit history, with an available **Undo This Action** path for reversible operations.
-
-<p align="center">
-  <img src="assets/mindfs-audit.jpg" alt="MindFS execution result and audit history showing completed filesystem mutations and undo controls" width="780"/>
-</p>
 
 > **Core interaction model:** intent → plan → explicit approval → execution → audit → undo.
 
