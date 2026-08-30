@@ -8,6 +8,32 @@
 
 MindFS indexes documents, structured data, media, archives, and binaries; extracts searchable artifacts; and answers questions using evidence-grounded retrieval. The system is designed around a strict **2 GB RAM budget** with measured benchmark diagnostics reported by the project.
 
+## See MindFS in action
+
+A short product walkthrough: **index → ask → review → approve → execute → audit/undo**.
+
+<p align="center">
+  <img src="assets/mindfs-demo.gif" alt="MindFS demo: index workspace, ask the agent, review proposed filesystem actions, approve execution, and inspect the audit trail" width="420"/>
+</p>
+
+### 1. Index & inspect
+
+The dashboard exposes indexed files, semantic artifacts, vector chunks, resource usage, and indexed workspace roots at a glance.
+
+### 2. Ask the agent
+
+The local intelligence agent explores the indexed workspace and turns a natural-language request into a concrete proposed action plan.
+
+### 3. Review & approve
+
+Mutating filesystem operations are surfaced explicitly before execution, with **Approve & Execute** and **Reject / Cancel** controls.
+
+### 4. Audit & undo
+
+Completed mutations are recorded in the audit history, with an available **Undo** path for reversible operations.
+
+> **Core interaction model:** intent → plan → explicit approval → execution → audit → undo.
+
 ## Why MindFS
 
 Filesystem intelligence has two hard constraints that typical cloud RAG systems often avoid:
