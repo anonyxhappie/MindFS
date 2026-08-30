@@ -1,103 +1,122 @@
 <p align="center">
-  <img src="assets/logo_dark.jpg" alt="MindFS Logo" width="480"/>
+  <img src="assets/logo_dark.jpg" alt="MindFS logo" width="480"/>
 </p>
 
-# MindFS: Local Privacy-First Filesystem Intelligence Engine
+# MindFS
 
-**MindFS** is a privacy-preserving, offline filesystem intelligence engine designed to operate within a strict **2 GB RAM budget** (target peak RSS < 1.7 GB). It indexes, semanticizes, and retrieves information from documents, structured data, media, archives, and binaries using sandboxed access, modular lazy-loaded processors, persistent SQLite + FAISS dual-storage, and evidence-grounded RAG answers.
+**A local, privacy-first filesystem intelligence engine designed for constrained hardware.**
 
----
+MindFS indexes documents, structured data, media, archives, and binaries; extracts searchable artifacts; and answers questions using evidence-grounded retrieval. The system is designed around a strict **2 GB RAM budget** with measured benchmark diagnostics reported by the project.
 
-## Key Features
+## Why MindFS
 
-1. **Strict <2 GB RAM Budget**: Measured peak process RSS diagnostics on all operations (< 140 MB measured in benchmarks).
-2. **Deterministic Workspace Sandboxing**: Path resolution and validation enforcing containment strictly within `WORKSPACE_ROOT`. All `../` traversals, absolute escapes, and external symlinks are rejected.
-3. **9 Modular & Lazy-Loaded Processors**:
-   - `TextProcessor`: Plain text, markdown, source code (`.py`, `.ts`, `.cpp`, `.rs`, `.go`, `.java`, etc.), logs.
-   - `PDFProcessor`: Bounded page-by-page streaming with page provenance (`source: report.pdf, page: 17`).
-   - `StructuredDataProcessor`: Schema, field, and statistic extraction for JSON, YAML, XML, and CSV/TSV without loading full files into memory.
-   - `ImageProcessor`: Dimension, format, color mode, and EXIF extraction with optional OCR text extraction.
-   - `AudioProcessor`: Codec, duration, sample rate, channels, and timestamped transcripts.
-   - `VideoProcessor`: Container properties, fps, codecs, and sparse temporal keyframe sampling.
-   - `ArchiveProcessor`: Safe inspection of ZIP, TAR, GZ with expansion bomb protection.
-   - `BinaryProcessor`: Non-executable inspection of ELF, Mach-O, PE, WASM, Java bytecode with architecture and interesting strings.
-   - `FallbackProcessor`: Byte entropy, printable ratio, and magic identification for unknown files.
-4. **Persistent Dual-Store Architecture**:
-   - **SQLite**: Authoritative store for `files`, `artifacts`, `chunks`, `processors`, `index_runs`, `errors`, and `diagnostics`.
-   - **FAISS**: CPU vector index mapping vector IDs directly to SQLite chunks.
-5. **Incremental Indexing**:
-   - Change detection via fingerprint `(canonical_path, size, mtime_ns, sha256)`.
-   - Skips unchanged files, re-indexes modified files, and purges deleted records.
-6. **Evidence-Grounded Agent**:
-   - Bounded action loop (max 10 steps).
-   - Candidate retrieval (8-12) -> metadata filtering -> deduplication -> source diversity -> top 3-5 evidence items with exact citations (`[filename (page/timestamp) | Score]`).
-   - Explicitly rejects hallucination when evidence is insufficient.
+Filesystem intelligence has two hard constraints that typical cloud RAG systems often avoid:
 
----
+1. Files may be sensitive and should remain local.
+2. A large heterogeneous filesystem cannot be treated as one giant in-memory document.
 
-## Installation
+MindFS addresses these with sandboxed filesystem access, modular processors, incremental indexing, persistent metadata/vector stores, and bounded evidence retrieval.
+
+## Key capabilities
+
+- **Filesystem sandboxing** — workspace containment rejects traversal, absolute escapes, and external symlinks.
+- **Modular processing** — specialized processors handle text, PDF, structured data, images, audio, video, archives, binaries, and unknown files.
+- **Incremental indexing** — fingerprints `(canonical_path, size, mtime_ns, sha256)` allow unchanged files to be skipped and deleted files to be purged.
+- **Dual persistence** — SQLite is the authoritative metadata store and FAISS provides CPU vector search mapped back to stored chunks.
+- **Evidence-grounded answers** — retrieval is bounded and responses retain exact source provenance.
+- **Resource diagnostics** — benchmark tooling measures memory and latency across core operations.
+
+## Architecture
+
+```mermaid
+flowchart TD
+    FS[Local filesystem] --> Scan[Incremental scanner]
+    Scan --> Processors[Lazy-loaded processors]
+    Processors --> Artifacts[Artifacts + chunks]
+    Artifacts --> SQLite[(SQLite)]
+    Artifacts --> FAISS[(FAISS)]
+    Query[CLI / application query] --> Retrieve[Bounded retrieval]
+    Retrieve --> SQLite
+    Retrieve --> FAISS
+    Retrieve --> Evidence[Evidence selection]
+    Evidence --> Answer[Grounded answer + citations]
+```
+
+The key architectural boundary is that **filesystem access, processing, persistence, retrieval, and answer generation are separate concerns**. Retrieval should provide evidence; the answering layer should not manufacture unsupported facts.
+
+## Processors
+
+MindFS currently documents specialized processors for:
+
+- Text and source code
+- PDF with page provenance
+- JSON, YAML, XML, CSV/TSV
+- Images and EXIF/OCR metadata
+- Audio and timestamped transcripts
+- Video metadata and sparse keyframes
+- ZIP/TAR/GZ archives with expansion-bomb protection
+- ELF, Mach-O, PE, WASM, and Java bytecode inspection
+- Unknown/binary fallback analysis
+
+Processors are lazy-loaded so a query or indexing operation does not require every heavy dependency to be active at once.
+
+## Quick start
+
+Requirements: Python 3.11+.
 
 ```bash
-# Clone the repository and navigate to MindFS
+git clone https://github.com/anonyxhappie/MindFS.git
 cd MindFS
-
-# Create and activate Python virtual environment (Python 3.11+)
 python3 -m venv .venv
 source .venv/bin/activate
-
-# Install dependencies and MindFS in editable mode
 pip install -e .
 ```
 
----
-
-## CLI Usage
+Initialize and index a workspace:
 
 ```bash
-# Initialize a workspace
 mindfs -w /path/to/workspace init
-
-# List workspace contents safely
-mindfs -w /path/to/workspace list
-
-# Inspect technical metadata of a file
-mindfs -w /path/to/workspace inspect report.pdf
-
-# Incrementally index the workspace
 mindfs -w /path/to/workspace index
-
-# Search indexed semantic artifacts
 mindfs -w /path/to/workspace search "Apollo database migration"
-
-# Filter search by path or file type
-mindfs -w /path/to/workspace search "monthly fee" --type-filter csv
-
-# Ask evidence-grounded questions
 mindfs -w /path/to/workspace ask "What database backend is planned for Project Apollo?"
-
-# Check index statistics
-mindfs -w /path/to/workspace status
-
-# Check memory diagnostics and peak RSS
-mindfs -w /path/to/workspace diagnostics
-
-# Rebuild index from scratch
-mindfs -w /path/to/workspace rebuild
-
-# Remove a file from index
-mindfs -w /path/to/workspace remove report.pdf
 ```
 
----
+Useful diagnostics:
 
-## Testing & Benchmarks
+```bash
+mindfs -w /path/to/workspace status
+mindfs -w /path/to/workspace diagnostics
+mindfs -w /path/to/workspace rebuild
+```
 
-Run the complete 34-item automated test suite:
+## Testing and benchmarks
+
+Run the automated tests:
+
 ```bash
 python -m pytest -v
 ```
 
-Run the peak RSS and latency benchmarking suite across all 12 core operations:
+Run the benchmark suite:
+
 ```bash
 python benchmarks/run_benchmarks.py
 ```
+
+The repository currently documents a 34-item automated test suite and a benchmark suite covering 12 core operations. Treat performance numbers as measurements from the repository's benchmark environment rather than universal guarantees.
+
+## Design priorities
+
+- **Privacy first** — process local files without requiring cloud storage.
+- **Deterministic boundaries** — filesystem containment and evidence selection should be enforceable rather than prompt conventions.
+- **Incremental work** — avoid reprocessing unchanged data.
+- **Explicit provenance** — answers should remain traceable to source artifacts.
+- **Constrained resources** — design for small-memory local deployments.
+
+## Project status
+
+MindFS is an actively developed project. Interfaces and implementation details may evolve; benchmark claims should be regenerated when the runtime or processing pipeline changes.
+
+## License
+
+See the repository license and package metadata for the current licensing terms.
