@@ -13,7 +13,7 @@ MindFS indexes documents, structured data, media, archives, and binaries; extrac
 A short product walkthrough: **index → ask → review → approve → execute → audit/undo**.
 
 <p align="center">
-  <img src="assets/mindfs-demo.gif" alt="MindFS demo: index workspace, ask the agent, review proposed filesystem actions, approve execution, and inspect the audit trail" width="420"/>
+  <img src="assets/mindfs-demo-hs.gif" alt="MindFS demo: index workspace, ask the agent, review proposed filesystem actions, approve execution, and inspect the audit trail" width="420"/>
 </p>
 
 ### 1. Index & inspect
